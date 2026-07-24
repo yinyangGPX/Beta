@@ -1,6 +1,6 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    EVADE v5.1 Beta V1 - CONECTADA A YIN YANG v27 CON AJUSTES
+    EVADE v5.1 Beta V1 - CONECTADA A YIN YANG v27 FIXED BUGS ARREGLADOS
     
     ✅ SISTEMA DE GUARDADO DE CONFIGURACIÓN
     ✅ INTEGRACIÓN CON PESTAÑA "AJUSTES" DE YIN YANG v27
@@ -126,18 +126,18 @@ print("   • Protección: Activa")
 --// CARGAR YIN YANG v27 CON AJUSTES
 --// ═════════════════════════════════════════════════════════════════════════════
 
-print("\n⏳ Cargando Yin Yang v27 CON AJUSTES...")
+print("\n⏳ Cargando Yin Yang v27 FIXED BUGS ARREGLADOS...")
 
 local LoadSuccess = pcall(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Moliinier/Yin-yang/refs/heads/main/Yin_Yang_v27_CON_AJUSTES.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Moliinier/Yin-yang/refs/heads/main/Yin_Yang_v27_FIXED_BUGS_ARREGLADOS.lua"))()
 end)
 
 if not LoadSuccess or not _G.YinYang then
-    error("❌ Error al cargar Yin Yang v27 CON AJUSTES desde GitHub")
+    error("❌ Error al cargar Yin Yang v27 FIXED BUGS ARREGLADOS desde GitHub")
     return
 end
 
-print("✅ Yin Yang v27 CON AJUSTES cargado correctamente")
+print("✅ Yin Yang v27 FIXED BUGS ARREGLADOS cargado correctamente")
 
 task.wait(0.5)
 
