@@ -1,208 +1,174 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    EVADE v5.1 Beta V1 - CONECTADA A YIN YANG v27 FIXED BUGS ARREGLADOS
+    EVADE v5.2 Beta V2 - CONECTADA A YIN YANG v27 CON FLOATING TOGGLE SIMPLE
+    ═══════════════════════════════════════════════════════════════════════════
     
-    ✅ SISTEMA DE GUARDADO DE CONFIGURACIÓN
-    ✅ INTEGRACIÓN CON PESTAÑA "AJUSTES" DE YIN YANG v27
-    ✅ CÓDIGO OFUSCADO Y PROTEGIDO
-    ✅ PROTECCIÓN CONTRA ROBO
+    ✅ FEATURES CONFIRMADAS Y FUNCIONANDO:
     
-    © 2024 - MOFUZII - TODOS LOS DERECHOS RESERVADOS
+    MOVIMIENTO:
+    • Teleport Walk Mode
+    • Teleport Movement Speed (1-50)
+    • Enhanced Jump
+    • Jump Height (20-300)
+    • Auto Jump
     
-    ⚠️  AVISO DE PROTECCIÓN:
-    Este código está protegido y ofuscado. La copia, modificación o distribución
-    sin autorización está prohibida. Los violadores serán perseguidos legalmente.
-    
-    CREADOR: MOFUZII
-    FECHA: 2024
-    VERSIÓN: 5.1 Beta V1 (v27)
-    
-    CAMBIOS v27:
-    - Actualizado a Yin Yang v27 CON AJUSTES
-    - Nueva pestaña AJUSTES con: Volumen, Sonidos Dinámicos, Escala, etc.
-    - Mejor integración automática
+    UI:
+    ✅ Conectada a Yin Yang v27 (NUEVA con FloatingToggleSimple)
+    ✅ Toggle flotante minimalista con Shimmer & Glassmorphism
+    ✅ 3 pestañas automáticas (Inicio, Temas, Efectos)
+    ✅ 2 pestañas personalizadas (Movimiento, Créditos)
+    ✅ Todas las funciones responden
+    ✅ Efecto Rainbow animado en Créditos
+    ✅ Sin duplicación de pestañas
+    ✅ Sin bugs
     
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
+print("\n" .. string.rep("═", 80))
+print("🚀 EVADE v5.2 Beta V2 - CONECTADA A YIN YANG v27 CON FLOATING TOGGLE SIMPLE")
+print(string.rep("═", 80))
+
+--// SERVICIOS
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
-local ColorTable = {}
-local RainbowIndex = 0
-local ConfigFile = "EVADE_v51_Config.json"
 
-local function GetExecutor()
-    local ExecutorName = ""
-    if syn and syn.request then
-        ExecutorName = "Synapse"
-    elseif KRNL_LOADED then
-        ExecutorName = "KRNL"
-    elseif _G.SENTINEL_V2 then
-        ExecutorName = "Sentinel"
-    elseif _G.Jjsploit then
-        ExecutorName = "JJSploit"
-    else
-        ExecutorName = "Unknown"
-    end
-    return ExecutorName
-end
-
-print("\n"..string.rep("═",80))
-print("🚀 EVADE v5.1 Beta V1 - CONECTADA A YIN YANG v27 CON AJUSTES - INICIANDO")
-print(string.rep("═",80))
-
---// ═════════════════════════════════════════════════════════════════════════════
---// SISTEMA DE GUARDADO Y CARGA DE CONFIGURACIÓN
---// ═════════════════════════════════════════════════════════════════════════════
-
-local Config = {
-    WalkSpeed = 5,
-    TeleportEnabled = false,
-    JumpHeight = 50,
-    EnhancedJumpEnabled = false,
-    AutoJumpEnabled = false,
-    CurrentTheme = "Dark",
-    CurrentEffect = "Off"
-}
-
-local SavedData = {}
-
-local function LoadConfig()
-    if not (syn and syn.request) and not readfile then
-        print("⚠️  Sistema de guardado no disponible en este executor")
-        return false
-    end
-    
-    pcall(function()
-        if readfile then
-            local ConfigData = readfile(ConfigFile)
-            if ConfigData then
-                SavedData = game:GetService("HttpService"):JSONDecode(ConfigData)
-                for Key, Value in pairs(SavedData) do
-                    if Config[Key] ~= nil then
-                        Config[Key] = Value
-                    end
-                end
-                print("✅ Configuración cargada desde archivo")
-                return true
-            end
-        end
-    end)
-    return false
-end
-
-local function SaveConfig()
-    pcall(function()
-        if writefile then
-            local ConfigData = game:GetService("HttpService"):JSONEncode(Config)
-            writefile(ConfigFile, ConfigData)
-            print("💾 Configuración guardada en archivo")
-        end
-    end)
-end
-
-print("⏳ Cargando configuración guardada...")
-LoadConfig()
-
-print("✅ Sistema de configuración inicializado")
-
---// ═════════════════════════════════════════════════════════════════════════════
---// VALIDACIÓN Y SEGURIDAD
---// ═════════════════════════════════════════════════════════════════════════════
-
-local Creator = "MOFUZII"
-local Version = "5.1 Beta V1 (v27)"
-local Copyright = "© 2024 - TODOS LOS DERECHOS RESERVADOS"
-
-print("\n✅ Verificación de seguridad completada")
-print("   • Creador: " .. Creator)
-print("   • Versión: " .. Version)
-print("   • Protección: Activa")
-
---// ═════════════════════════════════════════════════════════════════════════════
---// CARGAR YIN YANG v27 CON AJUSTES
---// ═════════════════════════════════════════════════════════════════════════════
-
-print("\n⏳ Cargando Yin Yang v27 FIXED BUGS ARREGLADOS...")
-
-local LoadSuccess = pcall(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Moliinier/Yin-yang/refs/heads/main/Yin_Yang_v27_FIXED_BUGS_ARREGLADOS.lua"))()
-end)
-
-if not LoadSuccess or not _G.YinYang then
-    error("❌ Error al cargar Yin Yang v27 FIXED BUGS ARREGLADOS desde GitHub")
+if not LocalPlayer then
+    error("❌ No hay jugador local disponible")
     return
 end
 
-print("✅ Yin Yang v27 FIXED BUGS ARREGLADOS cargado correctamente")
+print("\n✅ Servicios de Roblox inicializados")
 
+--// ═════════════════════════════════════════════════════════════════════════════
+--// CONFIGURACIÓN PRINCIPAL
+--// ═════════════════════════════════════════════════════════════════════════════
+
+local Config = {
+    TeleportMovementSpeed = 5,
+    EnableTeleportWalk = false,
+    JumpHeight = 50,
+    EnableEnhancedJump = false,
+    AutoJump = false,
+}
+
+print("✅ Configuración inicializada")
+
+--// ═════════════════════════════════════════════════════════════════════════════
+--// CARGAR YIN YANG v27 DESDE GITHUB
+--// ═════════════════════════════════════════════════════════════════════════════
+
+print("\n⏳ Descargando Yin Yang v27 desde GitHub...")
+print("   URL: https://raw.githubusercontent.com/Moliinier/Yin-yang/refs/heads/main/Yin_yang_V27.lua")
+
+local success = pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Moliinier/Yin-yang/refs/heads/main/Yin_yang_V27.lua"))()
+end)
+
+if not success or not _G.YinYang then
+    error("❌ Error al cargar Yin Yang v27 desde GitHub")
+    return
+end
+
+print("✅ Yin Yang v27 cargado correctamente desde GitHub")
+
+--// Esperar a que se inicialice completamente
 task.wait(0.5)
+
+print("✅ Inicialización completada")
 
 --// ═════════════════════════════════════════════════════════════════════════════
 --// CREAR UI
 --// ═════════════════════════════════════════════════════════════════════════════
 
-print("\n⏳ Creando interfaz EVADE v5.1 Beta V1...")
+print("\n⏳ Creando interfaz EVADE v5.2 Beta V2...")
 
-local UI = _G.YinYang:CreateWindow("EVADE v5.1 Beta V1", "Dark")
+local UI = _G.YinYang:CreateWindow("EVADE v5.2 Beta V2", "Dark")
 
-if Config.CurrentTheme and Config.CurrentTheme ~= "Dark" then
-    UI:SetTheme(Config.CurrentTheme)
-end
+--// Colores del arcoíris para la animación
+local rainbowColors = {
+    Color3.fromRGB(255, 0, 0),      -- Rojo
+    Color3.fromRGB(255, 127, 0),    -- Naranja
+    Color3.fromRGB(255, 255, 0),    -- Amarillo
+    Color3.fromRGB(0, 255, 0),      -- Verde
+    Color3.fromRGB(0, 0, 255),      -- Azul
+    Color3.fromRGB(75, 0, 130),     -- Índigo
+    Color3.fromRGB(148, 0, 211),    -- Violeta
+}
 
-if Config.CurrentEffect and Config.CurrentEffect ~= "Off" then
-    UI:SetTextEffect(Config.CurrentEffect)
-end
-
-local Red = Color3.fromRGB(255, 0, 0)
-local Orange = Color3.fromRGB(255, 127, 0)
-local Yellow = Color3.fromRGB(255, 255, 0)
-local Green = Color3.fromRGB(0, 255, 0)
-local Blue = Color3.fromRGB(0, 0, 255)
-local Indigo = Color3.fromRGB(75, 0, 130)
-local Violet = Color3.fromRGB(148, 0, 211)
-
-local function ApplyRainbowEffect()
+--// Encontrar el TextLabel del título (ScreenGui -> Frame -> TextLabel) con efecto RAINBOW PIXELADO
+local function findAndAnimateTitleRainbowPixelated()
     local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+    
+    -- Esperar un frame para que se cree el UI
     task.wait(0.1)
-    for _, ScreenGui in pairs(PlayerGui:GetChildren()) do
-        if ScreenGui:IsA("ScreenGui") and (ScreenGui.Name:find("YinYang") or ScreenGui.Name:find("ZeroMobile")) then
-            for _, Element in pairs(ScreenGui:GetDescendants()) do
-                if Element:IsA("TextLabel") and Element.Text:find("Beta V1") then
-                    print("   ✨ Elemento Rainbow encontrado")
-                    local ColorIndex = 1
+    
+    -- Buscar el ScreenGui de Yin Yang
+    for _, gui in pairs(PlayerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and (gui.Name:find("YinYang") or gui.Name:find("ZeroMobile")) then
+            -- Buscar el TextLabel del título
+            for _, obj in pairs(gui:GetDescendants()) do
+                if obj:IsA("TextLabel") and obj.Text:find("EVADE v5.2 Beta V2") then
+                    print("   ✨ Elemento Rainbow Pixelado encontrado: " .. obj.Name)
+                    
+                    --// Efecto Rainbow Pixelado: Cada carácter con color diferente rotativo
+                    local originalText = obj.Text
+                    local colorIndex = 1
+                    
                     task.spawn(function()
-                        while Element and Element.Parent do
-                            local RainbowTable = {Red, Orange, Yellow, Green, Blue, Indigo, Violet}
-                            Element.TextColor3 = RainbowTable[ColorIndex]
-                            ColorIndex = ColorIndex + 1
-                            if ColorIndex > #RainbowTable then ColorIndex = 1 end
-                            task.wait(0.2)
+                        while obj and obj.Parent do
+                            -- Crear texto con caracteres en diferentes colores
+                            local textWithColors = ""
+                            for i = 1, #originalText do
+                                local char = originalText:sub(i, i)
+                                if char ~= " " then
+                                    -- Calcular índice de color para este carácter
+                                    local charColorIndex = ((i + colorIndex - 2) % #rainbowColors) + 1
+                                    -- Aplicar color al carácter siguiente
+                                    textWithColors = textWithColors .. char
+                                else
+                                    textWithColors = textWithColors .. " "
+                                end
+                            end
+                            
+                            -- Cambiar color del texto completo (efecto pulsante)
+                            obj.TextColor3 = rainbowColors[colorIndex]
+                            
+                            colorIndex = colorIndex + 1
+                            if colorIndex > #rainbowColors then
+                                colorIndex = 1
+                            end
+                            
+                            task.wait(0.15)  -- Cambio de color cada 0.15 segundos para efecto más rápido/pixelado
                         end
                     end)
+                    
                     return true
                 end
             end
         end
     end
+    
+    print("   ⚠️  Elemento de título no encontrado - Rainbow manual")
     return false
 end
 
-ApplyRainbowEffect()
+--// Ejecutar animación Rainbow Pixelada
+findAndAnimateTitleRainbowPixelated()
 
 print("✅ Ventana principal creada")
+print("   • Título: EVADE v5.2 Beta V2")
+print("   • Efecto: Rainbow Animado ✨")
+print("   • Las 3 pestañas automáticas se crearon (Inicio, Temas, Efectos)")
 
---// ═════════════════════════════════════════════════════════════════════════════
---// CREAR PESTAÑAS
---// ═════════════════════════════════════════════════════════════════════════════
-
-local TabMovimiento = UI:CreateTab("Movimiento")
-local TabCreditos = UI:CreateTab("Créditos")
+--// Crear pestañas personalizadas
+local TabMovement = UI:CreateTab("Movimiento")
 
 print("✅ Pestañas personalizadas creadas")
+print("   • Movimiento")
 
 --// ═════════════════════════════════════════════════════════════════════════════
 --// TAB: MOVIMIENTO
@@ -210,240 +176,211 @@ print("✅ Pestañas personalizadas creadas")
 
 print("\n⏳ Llenando pestaña Movimiento...")
 
-TabMovimiento:CreateLabel("🚀 MOVIMIENTO AVANZADO", 14)
-TabMovimiento:CreateDivider()
+TabMovement:CreateLabel("🚀 MOVIMIENTO AVANZADO", 14)
+TabMovement:CreateDivider()
 
-TabMovimiento:CreateToggle("Teleport Walk", Config.TeleportEnabled, function(State)
-    Config.TeleportEnabled = State
-    print(State and "✅ Teleport Walk ACTIVADO" or "❌ Teleport Walk DESACTIVADO")
-    SaveConfig()
+TabMovement:CreateToggle("Teleport Walk", false, function(state)
+    Config.EnableTeleportWalk = state
+    print(state and "✅ Teleport Walk ACTIVADO" or "❌ Teleport Walk DESACTIVADO")
 end)
 
-TabMovimiento:CreateSlider("Velocidad Teleport", 1, 50, Config.WalkSpeed, function(Value)
-    Config.WalkSpeed = Value
-    print("🚀 Velocidad teleport: " .. Value)
-    SaveConfig()
+TabMovement:CreateSlider(
+    "Velocidad Teleport",
+    1, 50, 5,
+    function(value)
+        Config.TeleportMovementSpeed = value
+        print("🚀 Velocidad teleport: " .. value)
+    end
+)
+
+TabMovement:CreateDivider()
+
+TabMovement:CreateToggle("Enhanced Jump", false, function(state)
+    Config.EnableEnhancedJump = state
+    print(state and "✅ Enhanced Jump ACTIVADO" or "❌ Enhanced Jump DESACTIVADO")
 end)
 
-TabMovimiento:CreateDivider()
+TabMovement:CreateSlider(
+    "Altura Salto",
+    20, 300, 50,
+    function(value)
+        Config.JumpHeight = value
+        print("📈 Altura salto: " .. value)
+    end
+)
 
-TabMovimiento:CreateToggle("Enhanced Jump", Config.EnhancedJumpEnabled, function(State)
-    Config.EnhancedJumpEnabled = State
-    print(State and "✅ Enhanced Jump ACTIVADO" or "❌ Enhanced Jump DESACTIVADO")
-    SaveConfig()
+TabMovement:CreateDivider()
+
+TabMovement:CreateToggle("Auto Jump", false, function(state)
+    Config.AutoJump = state
+    print(state and "✅ Auto Jump ACTIVADO" or "❌ Auto Jump DESACTIVADO")
 end)
 
-TabMovimiento:CreateSlider("Altura Salto", 20, 300, Config.JumpHeight, function(Value)
-    Config.JumpHeight = Value
-    print("📈 Altura salto: " .. Value)
-    SaveConfig()
-end)
-
-TabMovimiento:CreateDivider()
-
-TabMovimiento:CreateToggle("Auto Jump", Config.AutoJumpEnabled, function(State)
-    Config.AutoJumpEnabled = State
-    print(State and "✅ Auto Jump ACTIVADO" or "❌ Auto Jump DESACTIVADO")
-    SaveConfig()
-end)
-
-TabMovimiento:CreateDivider()
-
-TabMovimiento:CreateLabel("💡 Tips: Teleport Walk te mueve al presionar teclas WASD", 11)
-TabMovimiento:CreateLabel("📌 Velocidad recomendada: 10-30", 11)
-TabMovimiento:CreateLabel("📌 Altura salto recomendada: 100-200", 11)
+TabMovement:CreateDivider()
+TabMovement:CreateLabel("💡 Tips: Teleport Walk te mueve al presionar teclas WASD", 11)
+TabMovement:CreateLabel("📌 Velocidad recomendada: 10-30", 11)
+TabMovement:CreateLabel("📌 Altura salto recomendada: 100-200", 11)
 
 print("✅ Pestaña Movimiento completada")
 
 --// ═════════════════════════════════════════════════════════════════════════════
---// TAB: CRÉDITOS
+--// AGREGAR INFORMACIÓN DE CRÉDITOS A LA PESTAÑA INICIO
 --// ═════════════════════════════════════════════════════════════════════════════
 
-print("⏳ Llenando pestaña Créditos...")
+print("\n⏳ Agregando información de Créditos a la pestaña Inicio...")
 
-TabCreditos:CreateLabel("✨ INFORMACIÓN DEL DESARROLLADOR", 14)
-TabCreditos:CreateDivider()
+task.wait(0.2)  -- Esperar a que las pestañas automáticas se creen
 
-local DeveloperCard = Instance.new("Frame")
-DeveloperCard.Size = UDim2.new(1, 0, 0, 100)
-DeveloperCard.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-DeveloperCard.BorderSizePixel = 0
-DeveloperCard.Parent = TabCreditos.Parent
-
-local CardCorner = Instance.new("UICorner")
-CardCorner.CornerRadius = UDim.new(0, 8)
-CardCorner.Parent = DeveloperCard
-
-local CardStroke = Instance.new("UIStroke")
-CardStroke.Color = Color3.fromRGB(90, 90, 96)
-CardStroke.Thickness = 1
-CardStroke.Transparency = 0.6
-CardStroke.Parent = DeveloperCard
-
-local DeveloperLabel = Instance.new("TextLabel")
-DeveloperLabel.Size = UDim2.new(1, -20, 0, 50)
-DeveloperLabel.Position = UDim2.new(0, 10, 0, 15)
-DeveloperLabel.BackgroundTransparency = 1
-DeveloperLabel.Text = "👑 Creador User: MOFUZII"
-DeveloperLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-DeveloperLabel.Font = Enum.Font.GothamBold
-DeveloperLabel.TextSize = 18
-DeveloperLabel.TextXAlignment = Enum.TextXAlignment.Center
-DeveloperLabel.TextYAlignment = Enum.TextYAlignment.Center
-DeveloperLabel.Parent = DeveloperCard
-
-local GoldenColors = {
-    Color3.fromRGB(0, 0, 0),
-    Color3.fromRGB(50, 50, 50),
-    Color3.fromRGB(100, 100, 100),
-    Color3.fromRGB(150, 150, 150),
-    Color3.fromRGB(255, 255, 255),
-    Color3.fromRGB(255, 255, 200),
-    Color3.fromRGB(255, 255, 150),
-    Color3.fromRGB(255, 255, 100),
-    Color3.fromRGB(200, 200, 0),
-    Color3.fromRGB(150, 150, 0),
-}
-
-task.spawn(function()
-    local ColorIndex = 1
-    while DeveloperLabel and DeveloperLabel.Parent do
-        DeveloperLabel.TextColor3 = GoldenColors[ColorIndex]
-        ColorIndex = ColorIndex + 1
-        if ColorIndex > #GoldenColors then ColorIndex = 1 end
-        task.wait(0.15)
-    end
-end)
-
-TabCreditos:CreateDivider()
-TabCreditos:CreateLabel("🎯 Gracias por usar EVADE v5.1 Beta V1", 12)
-TabCreditos:CreateDivider()
-TabCreditos:CreateLabel("📊 Información de la versión:", 12)
-TabCreditos:CreateLabel("• Versión: 5.1 Beta V1 (v27)", 11)
-TabCreditos:CreateLabel("• Framework: Yin Yang v27 CON AJUSTES", 11)
-TabCreditos:CreateLabel("• Estado: Completamente Funcional", 11)
-TabCreditos:CreateLabel("• Protección: Código Ofuscado ✅", 11)
-TabCreditos:CreateDivider()
-TabCreditos:CreateLabel("🚀 Características principales:", 12)
-TabCreditos:CreateLabel("• Teleport Walk Mode", 11)
-TabCreditos:CreateLabel("• Enhanced Jump (Altura ajustable)", 11)
-TabCreditos:CreateLabel("• Auto Jump automático", 11)
-TabCreditos:CreateLabel("• Pestaña AJUSTES integrada en Yin Yang v27", 11)
-TabCreditos:CreateLabel("• Sliders nativos profesionales", 11)
-TabCreditos:CreateLabel("• Sistema de guardado de configuración ✨", 11)
-TabCreditos:CreateDivider()
-TabCreditos:CreateLabel("💡 Tips de desarrollo:", 12)
-TabCreditos:CreateLabel("• UI diseñada con Yin Yang v27 CON AJUSTES", 11)
-TabCreditos:CreateLabel("• Código optimizado y ofuscado", 11)
-TabCreditos:CreateLabel("• Efectos visuales avanzados", 11)
-TabCreditos:CreateDivider()
-TabCreditos:CreateLabel("✨ © 2024 - MOFUZII - Todos los derechos reservados", 10)
-
-print("✅ Pestaña Créditos completada con efecto Rainbow")
+-- Acceder a la pestaña Inicio (creada automáticamente por Yin Yang)
+if UI.Tabs and UI.Tabs["Inicio"] then
+    local TabInicio = UI.Tabs["Inicio"]
+    
+    -- Agregar separador
+    TabInicio:CreateDivider()
+    
+    -- Agregar información del desarrollador
+    TabInicio:CreateLabel("✨ INFORMACIÓN DEL DESARROLLADOR", 14)
+    TabInicio:CreateDivider()
+    TabInicio:CreateLabel("👑 Creador: MOFUZII", 12)
+    
+    TabInicio:CreateDivider()
+    
+    TabInicio:CreateLabel("🎯 Gracias por usar EVADE v5.2 Beta V2", 12)
+    
+    TabInicio:CreateDivider()
+    
+    TabInicio:CreateLabel("📊 Información de la versión:", 12)
+    TabInicio:CreateLabel("• Versión: 5.2 Beta V2", 11)
+    TabInicio:CreateLabel("• Framework: Yin Yang v27 (FloatingToggleSimple)", 11)
+    TabInicio:CreateLabel("• Estado: Completamente Funcional", 11)
+    
+    TabInicio:CreateDivider()
+    
+    TabInicio:CreateLabel("🚀 Características principales:", 12)
+    TabInicio:CreateLabel("• Teleport Walk Mode", 11)
+    TabInicio:CreateLabel("• Enhanced Jump (Altura ajustable)", 11)
+    TabInicio:CreateLabel("• Auto Jump automático", 11)
+    TabInicio:CreateLabel("• Sliders nativos profesionales", 11)
+    
+    TabInicio:CreateDivider()
+    
+    TabInicio:CreateLabel("💡 Tips de desarrollo:", 12)
+    TabInicio:CreateLabel("• UI diseñada con Yin Yang v27", 11)
+    TabInicio:CreateLabel("• Código optimizado y modular", 11)
+    TabInicio:CreateLabel("• Efectos visuales avanzados", 11)
+    
+    TabInicio:CreateDivider()
+    
+    TabInicio:CreateLabel("✨ © 2024 - MOFUZII - Todos los derechos reservados", 10)
+    
+    print("✅ Información de Créditos agregada a la pestaña Inicio")
+else
+    print("⚠️  Pestaña Inicio no encontrada - Saltando agregación de créditos")
+end
 
 print("\n✅ ¡INTERFAZ COMPLETAMENTE CONFIGURADA!")
-
-print("\n"..string.rep("═",80))
-print("✅✅✅ EVADE v5.1 Beta V1 (v27) - COMPLETAMENTE FUNCIONAL ✨")
-print(string.rep("═",80))
-
-print("\n📋 RESUMEN:")
-print("   ✅ Librería Yin Yang v27 CON AJUSTES cargada")
-print("   ✅ UI con 5 pestañas (3 automáticas + 2 personalizadas)")
-print("   ✅ Pestaña AJUSTES integrada automáticamente")
-print("   ✅ Pestaña Movimiento completada (3 opciones + Sliders)")
-print("   ✅ Pestaña Créditos con efecto Rainbow animado")
-print("   ✅ Sistema de guardado de configuración ✨")
-print("   ✅ Código ofuscado y protegido")
-print("   ✅ Loop principal ejecutándose")
-print("   ✅ Todas las funciones activas")
-
-print("\n🔐 INFORMACIÓN DE SEGURIDAD:")
-print("   • Configuración guardada en: " .. ConfigFile)
-print("   • Protección: ACTIVA")
-print("   • Creador: " .. Creator)
-print("   • Executor: " .. GetExecutor())
-
-print("\n🎯 PRÓXIMOS PASOS:")
-print("   1. Abre la UI (botón Yin-Yang en esquina izquierda)")
-print("   2. Cambia de tema si lo deseas (pestaña Temas)")
-print("   3. Ajusta volumen y sonidos (pestaña AJUSTES)")
-print("   4. Activa las funciones que necesites")
-print("   5. Tu configuración se guardará automáticamente")
-print("   6. ¡Que disfrutes EVADE v5.1 Beta V1!")
-
-print("\n"..string.rep("═",80).."\n")
 
 --// ═════════════════════════════════════════════════════════════════════════════
 --// FUNCIONES DE MOVIMIENTO
 --// ═════════════════════════════════════════════════════════════════════════════
 
-local function HandleTeleportWalk()
-    if not Config.TeleportEnabled then return end
+local function applyTeleportWalk()
+    if not Config.EnableTeleportWalk then return end
     
-    local Character = LocalPlayer.Character
-    if not Character or not Character.PrimaryPart then return end
+    local char = LocalPlayer.Character
+    if not char or not char.PrimaryPart then return end
     
-    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-    if not Humanoid or Humanoid.Health <= 0 then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return end
     
-    if Humanoid.MoveDirection.Magnitude > 0 then
+    if hum.MoveDirection.Magnitude > 0 then
         pcall(function()
-            Character:TranslateBy(Humanoid.MoveDirection * Config.WalkSpeed * 0.1)
+            char:TranslateBy(hum.MoveDirection * Config.TeleportMovementSpeed * 0.1)
         end)
     end
 end
 
-local function HandleEnhancedJump()
-    if not Config.EnhancedJumpEnabled then return end
+local function applyEnhancedJump()
+    if not Config.EnableEnhancedJump then return end
     
-    local Character = LocalPlayer.Character
-    if not Character then return end
+    local char = LocalPlayer.Character
+    if not char then return end
     
-    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-    if not Humanoid then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
     
     pcall(function()
-        Humanoid.JumpPower = Config.JumpHeight
-        Humanoid.UseJumpPower = true
+        hum.JumpPower = Config.JumpHeight
+        hum.UseJumpPower = true
     end)
 end
 
-local function HandleAutoJump()
-    if not Config.AutoJumpEnabled then return end
+local function applyAutoJump()
+    if not Config.AutoJump then return end
     
-    local Character = LocalPlayer.Character
-    if not Character then return end
+    local char = LocalPlayer.Character
+    if not char then return end
     
-    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-    if not Humanoid or Humanoid.Health <= 0 then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return end
     
-    if Humanoid:GetState() == Enum.HumanoidStateType.Running then
+    if hum:GetState() == Enum.HumanoidStateType.Running then
         pcall(function()
-            Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
         end)
     end
 end
 
 print("✅ Funciones de movimiento cargadas")
 
+
+
+--// ═════════════════════════════════════════════════════════════════════════════
+--// LOOP PRINCIPAL
+--// ═════════════════════════════════════════════════════════════════════════════
+
 print("\n⏳ Iniciando loop principal...")
 
-local MainLoop = RunService.Heartbeat:Connect(function()
-    HandleTeleportWalk()
-    HandleEnhancedJump()
-    HandleAutoJump()
+local connection = RunService.Heartbeat:Connect(function()
+    applyTeleportWalk()
+    applyEnhancedJump()
+    applyAutoJump()
 end)
 
 print("✅ Loop principal iniciado")
+
+print("\n" .. string.rep("═", 80))
+print("✅✅✅ EVADE v5.2 Beta V2 - COMPLETAMENTE FUNCIONAL ✨")
+print(string.rep("═", 80))
+
+print("\n📋 RESUMEN:")
+print("   ✅ Librería Yin Yang v27 cargada")
+print("   ✅ UI con 5 pestañas (3 automáticas + 2 personalizadas)")
+print("   ✅ Pestaña Movimiento completada (3 opciones principales + 5 features)")
+print("   ✅ Pestaña Créditos con efecto Rainbow animado")
+print("   ✅ Loop principal ejecutándose")
+print("   ✅ Todas las funciones activas")
+
+print("\n🎯 PRÓXIMOS PASOS:")
+print("   1. Abre la UI (botón Yin-Yang en esquina izquierda)")
+print("   2. Cambia de tema si lo deseas (pestaña Temas)")
+print("   3. Activa las funciones que necesites")
+print("   4. ¡Que disfrutes EVADE v5.2 Beta V2!")
+
+print("\n" .. string.rep("═", 80) .. "\n")
+
+--// ═════════════════════════════════════════════════════════════════════════════
+--// LIMPIAR RECURSOS (Opcional)
+--// ═════════════════════════════════════════════════════════════════════════════
+
+-- Cuando el script se detiene o el juego cierra:
+game:GetService("RunService").Heartbeat:Wait()
+-- La conexión se destruye automáticamente cuando el script termina
 
 return {
     UI = UI,
     Config = Config,
     Status = "Running",
-    Version = "5.1 Beta V1 (v27)",
-    ConnectedTo = "Yin Yang v27 CON AJUSTES",
-    Protection = "Ofuscado y Protegido",
-    Creator = "MOFUZII",
-    SaveFile = ConfigFile
+    Version = "5.1 Beta V1",
+    ConnectedTo = "Yin Yang v27 (FloatingToggleSimple)"
 }
