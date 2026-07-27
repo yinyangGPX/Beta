@@ -1,14 +1,14 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    EVADE v5.2 BETA - JUMP FRONTAL + BETA NEW RAINBOW
+    EVADE V7 BETA - FRONTAL JUMP + BETA NEW RAINBOW
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
 print("\n" .. string.rep("=", 80))
-print("EVADE v5.2 BETA - JUMP FRONTAL + BETA NEW")
+print("EVADE v5.2 BETA - FRONTAL JUMP + BETA NEW")
 print(string.rep("=", 80))
 
---// SERVICIOS
+--// SERVICES
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -17,18 +17,18 @@ local Workspace = game:GetService("Workspace")
 local Debris = game:GetService("Debris")
 
 if not LocalPlayer then
-    error("ERROR: No hay jugador local disponible")
+    error("ERROR: No local player available")
     return
 end
 
-print("\nSERVICIOS: Inicializados correctamente")
+print("\nSERVICES: Initialized successfully")
 
 --// ═════════════════════════════════════════════════════════════════════════════
---// CONFIGURACION PRINCIPAL
+--// MAIN CONFIGURATION
 --// ═════════════════════════════════════════════════════════════════════════════
 
 local Config = {
-    --// MOVIMIENTO BASICO
+    --// BASIC MOVEMENT
     TeleportMovementSpeed = 5,
     EnableTeleportWalk = false,
     JumpHeight = 50,
@@ -43,7 +43,7 @@ local Config = {
     EnableFrontalJump = false,
 }
 
---// Variables de Frontal Jump
+--// Frontal Jump Variables
 local camera = Workspace.CurrentCamera
 getgenv().FrontalJumpSpeed = 42
 getgenv().RampMultiplier = 1.55
@@ -56,45 +56,122 @@ local activeBV = nil
 local lastJumpTime = tick()
 local jumpInterval = 0.65
 
---// Variables para guardar estado de opciones
+--// Variables to save options state
 local savedOptions = {
     EnableTeleportWalk = false,
     EnableEnhancedJump = false,
     EnableGravityMod = false,
 }
 
-print("CONFIGURACION: Inicializada")
-
 --// ═════════════════════════════════════════════════════════════════════════════
---// CARGAR YIN YANG v27 FINAL
+--// SETTINGS SAVE/LOAD SYSTEM
 --// ═════════════════════════════════════════════════════════════════════════════
 
-print("\nCargando Yin Yang v27 Final desde GitHub...")
+local HttpService = game:GetService("HttpService")
+local SettingsFile = "EVADE_V52_Settings.json"
+
+local function SaveSettings()
+    pcall(function()
+        local data = {
+            EnableTeleportWalk = Config.EnableTeleportWalk,
+            TeleportMovementSpeed = Config.TeleportMovementSpeed,
+            EnableEnhancedJump = Config.EnableEnhancedJump,
+            JumpHeight = Config.JumpHeight,
+            AutoJump = Config.AutoJump,
+            EnableGravityMod = Config.EnableGravityMod,
+            GravityScale = Config.GravityScale,
+            EnableFrontalJump = Config.EnableFrontalJump,
+            FrontalJumpSpeed = getgenv().FrontalJumpSpeed,
+            RampMultiplier = getgenv().RampMultiplier,
+        }
+        writefile(SettingsFile, HttpService:JSONEncode(data))
+    end)
+end
+
+local function LoadSettings()
+    local ok, result = pcall(function()
+        if isfile and isfile(SettingsFile) then
+            local content = readfile(SettingsFile)
+            if content and content ~= "" then
+                return HttpService:JSONDecode(content)
+            end
+        end
+        return nil
+    end)
+
+    if ok and result then
+        if result.EnableTeleportWalk ~= nil then Config.EnableTeleportWalk = result.EnableTeleportWalk end
+        if result.TeleportMovementSpeed ~= nil then Config.TeleportMovementSpeed = result.TeleportMovementSpeed end
+        if result.EnableEnhancedJump ~= nil then Config.EnableEnhancedJump = result.EnableEnhancedJump end
+        if result.JumpHeight ~= nil then Config.JumpHeight = result.JumpHeight end
+        if result.AutoJump ~= nil then Config.AutoJump = result.AutoJump end
+        if result.EnableGravityMod ~= nil then Config.EnableGravityMod = result.EnableGravityMod end
+        if result.GravityScale ~= nil then Config.GravityScale = result.GravityScale end
+        if result.EnableFrontalJump ~= nil then Config.EnableFrontalJump = result.EnableFrontalJump end
+        if result.FrontalJumpSpeed ~= nil then getgenv().FrontalJumpSpeed = result.FrontalJumpSpeed end
+        if result.RampMultiplier ~= nil then getgenv().RampMultiplier = result.RampMultiplier end
+        print("SETTINGS: Previous configuration loaded successfully")
+    else
+        print("SETTINGS: No saved configuration found, using defaults")
+    end
+end
+
+LoadSettings()
+
+--// Resync currentSpeed with the loaded FrontalJumpSpeed value
+currentSpeed = getgenv().FrontalJumpSpeed
+
+print("CONFIGURATION: Initialized")
+
+--// ═════════════════════════════════════════════════════════════════════════════
+--// LOAD YIN YANG v28 FINAL
+--// ═════════════════════════════════════════════════════════════════════════════
+
+print("\nLoading Yin Yang v28 Final from GitHub...")
 
 local success = pcall(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Moliinier/Yin-yang/refs/heads/main/Yin_Yang_v27_FINAL.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Moliinier/Yin-yang/refs/heads/main/Yin_Yang_v28_TRANSLATE_fixed_no_demo.lua"))()
 end)
 
 if not success or not _G.YinYang then
-    error("ERROR: Fallo al cargar Yin Yang v27 Final")
+    error("ERROR: Failed to load Yin Yang v28 Final")
     return
 end
 
-print("LIBRERIA: Yin Yang v27 Final cargado correctamente")
+print("LIBRARY: Yin Yang v28 Final loaded successfully")
 task.wait(0.5)
 
-print("SISTEMA: Inicializacion completada")
+print("SYSTEM: Initialization completed")
 
 --// ═════════════════════════════════════════════════════════════════════════════
---// CREAR UI
+--// CREATE UI
 --// ═════════════════════════════════════════════════════════════════════════════
 
-print("\nCreando interfaz EVADE v5.2 Beta...")
+print("\nCreating EVADE v5.2 Beta interface...")
 
-local UI = _G.YinYang:CreateWindow("EVADE v5.2 Beta", "Dark")
+--// Read the theme saved by the Yin Yang library itself (Yin_Yang_Config.txt)
+--// The library saves the theme correctly on change, but its own CreateWindow
+--// never re-applies it on load - so we read the same file here and pass it in.
+local function GetSavedTheme()
+    local theme = "Dark"
+    pcall(function()
+        if isfile and isfile("Yin_Yang_Config.txt") then
+            local content = readfile("Yin_Yang_Config.txt")
+            if content and content ~= "" then
+                local value = content:match("theme:([^|]+)")
+                if value then
+                    theme = value
+                end
+            end
+        end
+    end)
+    return theme
+end
+
+local UI = _G.YinYang:CreateWindow("EVADE v7 BETA", GetSavedTheme())
 
 --// ═════════════════════════════════════════════════════════════════════════════
---// EFECTO RAINBOW INVERSO PARA TÍTULO
+--// INVERSE RAINBOW EFFECT FOR TITLE
 --// ═════════════════════════════════════════════════════════════════════════════
 
 local function setupRainbowInversedTitle()
@@ -107,19 +184,19 @@ local function setupRainbowInversedTitle()
         local TitleLabel = ScreenGui:FindFirstChild("TitleLabel")
         
         if TitleLabel then
-            print("✨ Creando efecto rainbow inverso con dos TextLabels...")
+            print("Creating inverse rainbow effect with two TextLabels...")
             
-            --// Obtener posición y tamaño del título original
+            --// Get position and size of the original title
             local origText = TitleLabel.Text
             local origSize = TitleLabel.Size
             local origPos = TitleLabel.Position
             local origFont = TitleLabel.Font
             local origTextSize = TitleLabel.TextSize
             
-            --// Hacer invisible el título original
+            --// Make original title invisible
             TitleLabel.TextTransparency = 1
             
-            --// Crear TextLabel para "EVADE" (Blanco → Negro)
+            --// Create TextLabel for "EVADE" (White → Black)
             local EvadeLabel = Instance.new("TextLabel")
             EvadeLabel.Name = "EvadeLabel"
             EvadeLabel.Text = "EVADE"
@@ -133,7 +210,7 @@ local function setupRainbowInversedTitle()
             EvadeLabel.ZIndex = TitleLabel.ZIndex + 1
             EvadeLabel.Parent = TitleLabel.Parent
             
-            --// Crear TextLabel para "Beta" (Negro → Blanco)
+            --// Create TextLabel for "Beta" (Black → White)
             local BetaLabel = Instance.new("TextLabel")
             BetaLabel.Name = "BetaLabel"
             BetaLabel.Text = "v5.2 Beta"
@@ -147,9 +224,9 @@ local function setupRainbowInversedTitle()
             BetaLabel.ZIndex = TitleLabel.ZIndex + 1
             BetaLabel.Parent = TitleLabel.Parent
             
-            print("✅ Labels creados: EvadeLabel + BetaLabel")
+            print("✅ Labels created: EvadeLabel + BetaLabel")
             
-            --// Animar colores INVERSOS
+            --// Animate INVERSE colors
             local cycleCount = 0
             local rainbow = RunService.RenderStepped:Connect(function()
                 if not EvadeLabel or not EvadeLabel.Parent or not BetaLabel or not BetaLabel.Parent then
@@ -195,7 +272,7 @@ local function setupRainbowInversedTitle()
                 end
             end)
             
-            print("✅ Efecto rainbow inverso activado")
+            print("✅ Inverse rainbow effect activated")
         end
     end
 end
@@ -203,90 +280,95 @@ end
 task.delay(1, setupRainbowInversedTitle)
 
 --// ════════════════════════════════════════════════════════════════════════════
---// CREAR PESTAÑAS
+--// CREATE TABS
 --// ════════════════════════════════════════════════════════════════════════════
 
-local TabMovement = UI:CreateTab("Movimiento", "rbxassetid://130755202295151")
-local TabCreditos = UI:CreateTab("Creditos", "rbxassetid://86797720103644")
+local TabMovement = UI:CreateTab("Movement", "rbxassetid://102227126804065")
+local TabCreditos = UI:CreateTab("Credits", "rbxassetid://92077096693208")
 
-print("PESTAÑAS: Creadas (Movimiento + Créditos)")
+print("TABS: Created (Movement + Credits)")
 
 --// ═════════════════════════════════════════════════════════════════════════════
---// TAB: MOVIMIENTO
+--// TAB: MOVEMENT
 --// ═════════════════════════════════════════════════════════════════════════════
 
-print("\nConfigurando pestaña Movimiento...")
+print("\nConfiguring Movement tab...")
 
-TabMovement:CreateLabel("MOVIMIENTO BASICO", 14)
+TabMovement:CreateLabel("BASIC MOVEMENT", 14)
 TabMovement:CreateDivider()
 
-TabMovement:CreateFloatingToggle("Teleport Walk", false, function(state)
+TabMovement:CreateFloatingToggle("Teleport Walk", Config.EnableTeleportWalk, function(state)
     Config.EnableTeleportWalk = state
-    print(state and "✅ Teleport Walk ACTIVADO" or "❌ Teleport Walk DESACTIVADO")
+    print(state and "✅ Teleport Walk ENABLED" or "❌ Teleport Walk DISABLED")
+    SaveSettings()
 end)
 
 TabMovement:CreateSlider(
-    "Velocidad Teleport",
-    1, 50, 5,
+    "Teleport Speed",
+    1, 50, Config.TeleportMovementSpeed,
     function(value)
         Config.TeleportMovementSpeed = value
-        print("✓ Velocidad teleport: " .. value)
+        print("✓ Teleport speed: " .. value)
+        SaveSettings()
     end
 )
 
 TabMovement:CreateDivider()
 
-TabMovement:CreateFloatingToggle("Enhanced Jump", false, function(state)
+TabMovement:CreateFloatingToggle("Enhanced Jump", Config.EnableEnhancedJump, function(state)
     Config.EnableEnhancedJump = state
-    print(state and "✅ Enhanced Jump ACTIVADO" or "❌ Enhanced Jump DESACTIVADO")
+    print(state and "✅ Enhanced Jump ENABLED" or "❌ Enhanced Jump DISABLED")
+    SaveSettings()
 end)
 
 TabMovement:CreateSlider(
-    "Altura Salto",
-    20, 300, 50,
+    "Jump Height",
+    20, 300, Config.JumpHeight,
     function(value)
         Config.JumpHeight = value
-        print("✓ Altura salto: " .. value)
+        print("✓ Jump height: " .. value)
+        SaveSettings()
     end
 )
 
 TabMovement:CreateDivider()
 
-TabMovement:CreateFloatingToggle("Auto Jump", false, function(state)
+TabMovement:CreateFloatingToggle("Auto Jump", Config.AutoJump, function(state)
     Config.AutoJump = state
-    print(state and "✅ Auto Jump ACTIVADO" or "❌ Auto Jump DESACTIVADO")
+    print(state and "✅ Auto Jump ENABLED" or "❌ Auto Jump DISABLED")
+    SaveSettings()
 end)
 
 TabMovement:CreateDivider()
 
---// JUMP FRONTAL CON BETA NEW RAINBOW
-TabMovement:CreateLabel("JUMP FRONTAL", 14)
+--// FRONTAL JUMP WITH BETA NEW RAINBOW
+TabMovement:CreateLabel("FRONTAL JUMP", 14)
 TabMovement:CreateDivider()
 
-TabMovement:CreateFloatingToggle("Jump Frontal", false, function(state)
+TabMovement:CreateFloatingToggle("Frontal Jump", Config.EnableFrontalJump, function(state)
     Config.EnableFrontalJump = state
     if state then
-        --// GUARDAR ESTADO ACTUAL DE LAS OPCIONES
+        --// SAVE CURRENT OPTIONS STATE
         savedOptions.EnableTeleportWalk = Config.EnableTeleportWalk
         savedOptions.EnableEnhancedJump = Config.EnableEnhancedJump
         savedOptions.EnableGravityMod = Config.EnableGravityMod
         
-        --// DESACTIVAR LAS OPCIONES CONFLICTIVAS
+        --// DISABLE CONFLICTING OPTIONS
         Config.EnableTeleportWalk = false
         Config.EnableEnhancedJump = false
         Config.EnableGravityMod = false
         
-        --// INICIALIZAR JUMP FRONTAL
+        --// INITIALIZE FRONTAL JUMP
         lastJumpTime = tick()
         currentSpeed = getgenv().FrontalJumpSpeed
         airAccumulator = 0
         
-        print("✅ Jump Frontal ACTIVADO - Beta")
-        print("   - Teleport Walk desactivado")
-        print("   - Enhanced Jump desactivado")
-        print("   - Gravity Mod desactivado")
+        print("✅ Frontal Jump ENABLED - Beta")
+        print("   - Teleport Walk disabled")
+        print("   - Enhanced Jump disabled")
+        print("   - Gravity Mod disabled")
     else
-        --// RESTAURAR LAS OPCIONES GUARDADAS
+        --// RESTORE SAVED OPTIONS
         Config.EnableTeleportWalk = savedOptions.EnableTeleportWalk
         Config.EnableEnhancedJump = savedOptions.EnableEnhancedJump
         Config.EnableGravityMod = savedOptions.EnableGravityMod
@@ -295,27 +377,30 @@ TabMovement:CreateFloatingToggle("Jump Frontal", false, function(state)
         activeBV = nil
         currentSpeed = getgenv().FrontalJumpSpeed
         
-        print("❌ Jump Frontal DESACTIVADO")
-        print("   - Opciones restauradas")
+        print("❌ Frontal Jump DISABLED")
+        print("   - Options restored")
     end
+    SaveSettings()
 end)
 
 TabMovement:CreateSlider(
-    "Velocidad Movimiento",
-    50, 110, 42,
+    "Movement Speed",
+    50, 110, getgenv().FrontalJumpSpeed,
     function(value)
         getgenv().FrontalJumpSpeed = value
         currentSpeed = value
-        print("✓ Velocidad Jump Frontal: " .. value)
+        print("✓ Frontal Jump Speed: " .. value)
+        SaveSettings()
     end
 )
 
 TabMovement:CreateSlider(
-    "Multiplicador Rampas",
-    1.0, 5.0, 1.55,
+    "Ramp Multiplier",
+    1.0, 5.0, getgenv().RampMultiplier,
     function(value)
         getgenv().RampMultiplier = value
-        print("✓ Multiplicador Rampas: " .. value)
+        print("✓ Ramp Multiplier: " .. value)
+        SaveSettings()
     end
 )
 
@@ -323,23 +408,25 @@ TabMovement:CreateDivider()
 TabMovement:CreateLabel("GRAVITY MODIFICATION", 14)
 TabMovement:CreateDivider()
 
-TabMovement:CreateFloatingToggle("Gravity Mod Enabled", false, function(state)
+TabMovement:CreateFloatingToggle("Gravity Mod Enabled", Config.EnableGravityMod, function(state)
     Config.EnableGravityMod = state
-    print(state and "✅ Gravity Mod ACTIVADO" or "❌ Gravity Mod DESACTIVADO")
+    print(state and "✅ Gravity Mod ENABLED" or "❌ Gravity Mod DISABLED")
+    SaveSettings()
 end)
 
 TabMovement:CreateSlider(
     "Gravity Scale",
-    0.1, 2, 0.5,
+    0.1, 2, Config.GravityScale,
     function(value)
         Config.GravityScale = value
         print("✓ Gravity Scale: " .. value)
+        SaveSettings()
     end
 )
 
-print("✅ MOVIMIENTO: Pestaña completada")
+print("✅ MOVEMENT: Tab completed")
 
---// CREAR EFECTO RAINBOW AMARILLO-NEGRO PARA "Beta New"
+--// CREATE YELLOW-BLACK RAINBOW EFFECT FOR "Beta New"
 local function setupBetaNewRainbow()
     local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
     task.wait(1.2)
@@ -347,13 +434,13 @@ local function setupBetaNewRainbow()
     if PlayerGui:FindFirstChild("Yin") then
         local ScreenGui = PlayerGui.Yin
         
-        --// Buscar el toggle de "Jump Frontal" en TabMovement
+        --// Find the "Frontal Jump" toggle in TabMovement
         for _, child in pairs(ScreenGui:GetDescendants()) do
-            if child:IsA("TextLabel") and child.Text:find("Jump Frontal") then
+            if child:IsA("TextLabel") and child.Text:find("Frontal Jump") then
                 local parentFrame = child.Parent
                 
                 if parentFrame then
-                    --// Crear label para "Beta" con rainbow
+                    --// Create label for "Beta" with rainbow
                     local BetaNewLabel = Instance.new("TextLabel")
                     BetaNewLabel.Name = "BetaLabel"
                     BetaNewLabel.Text = "Beta"
@@ -367,9 +454,9 @@ local function setupBetaNewRainbow()
                     BetaNewLabel.ZIndex = child.ZIndex + 2
                     BetaNewLabel.Parent = parentFrame
                     
-                    print("✨ Creando efecto rainbow Amarillo-Negro para Beta...")
+                    print("✨ Creating Yellow-Black rainbow effect for Beta...")
                     
-                    --// Animar colores Amarillo ↔ Negro
+                    --// Animate Yellow ↔ Black colors
                     local cycleCount = 0
                     local rainbowBetaNew = RunService.RenderStepped:Connect(function()
                         if not BetaNewLabel or not BetaNewLabel.Parent then
@@ -381,7 +468,7 @@ local function setupBetaNewRainbow()
                         local progress = (cycleCount % 120) / 120
                         
                         if progress < 0.5 then
-                            --// Amarillo (255, 255, 0) → Negro (0, 0, 0)
+                            --// Yellow (255, 255, 0) → Black (0, 0, 0)
                             local t = progress * 2
                             local brightness = 1 - t
                             
@@ -391,7 +478,7 @@ local function setupBetaNewRainbow()
                                 0
                             )
                         else
-                            --// Negro (0, 0, 0) → Amarillo (255, 255, 0)
+                            --// Black (0, 0, 0) → Yellow (255, 255, 0)
                             local t = (progress - 0.5) * 2
                             local brightness = t
                             
@@ -403,7 +490,7 @@ local function setupBetaNewRainbow()
                         end
                     end)
                     
-                    print("✅ Efecto rainbow Amarillo-Negro activado para Beta")
+                    print("✅ Yellow-Black rainbow effect activated for Beta")
                     return
                 end
             end
@@ -414,37 +501,37 @@ end
 task.delay(1.5, setupBetaNewRainbow)
 
 --// ═════════════════════════════════════════════════════════════════════════════
---// TAB: CREDITOS
+--// TAB: CREDITS
 --// ═════════════════════════════════════════════════════════════════════════════
 
-print("\nConfigurando pestaña Creditos...")
+print("\nConfiguring Credits tab...")
 
 TabCreditos:CreateLabel("EVADE v5.2 Beta", 14)
 TabCreditos:CreateDivider()
-TabCreditos:CreateLabel("Desarrollado por: MOFUZII", 12)
+TabCreditos:CreateLabel("Developed by: MOFUZII", 12)
 TabCreditos:CreateLabel("Framework: Yin Yang v27 Final", 11)
-TabCreditos:CreateLabel("Estado: Completamente Funcional ✅", 11)
+TabCreditos:CreateLabel("Status: Fully Functional ✅", 11)
 TabCreditos:CreateDivider()
-TabCreditos:CreateLabel("Caracteristicas:", 12)
+TabCreditos:CreateLabel("Features:", 12)
 TabCreditos:CreateLabel("✓ Teleport Walk (Floating)", 11)
 TabCreditos:CreateLabel("✓ Enhanced Jump (Floating)", 11)
 TabCreditos:CreateLabel("✓ Auto Jump (Floating)", 11)
-TabCreditos:CreateLabel("✓ Jump Frontal (Floating) NUEVO", 11)
+TabCreditos:CreateLabel("✓ Frontal Jump (Floating) NEW", 11)
 TabCreditos:CreateLabel("✓ Gravity Modification (Floating)", 11)
 TabCreditos:CreateDivider()
-TabCreditos:CreateLabel("EFECTO ESPECIAL:", 12)
-TabCreditos:CreateLabel("🌈 Título Rainbow Inverso", 11)
-TabCreditos:CreateLabel("🌈 Beta New (Amarillo ↔ Negro)", 11)
+TabCreditos:CreateLabel("SPECIAL EFFECT:", 12)
+TabCreditos:CreateLabel("Inverse Rainbow Title", 11)
+TabCreditos:CreateLabel("Beta New (Yellow ↔ Black)", 11)
 
-print("✅ CREDITOS: Pestaña completada")
+print("✅ CREDITS: Tab completed")
 
-print("\n✅ OK: INTERFAZ COMPLETAMENTE CONFIGURADA")
+print("\n✅ OK: INTERFACE FULLY CONFIGURED")
 
 --// ═════════════════════════════════════════════════════════════════════════════
---// FUNCIONES DE MOVIMIENTO
+--// MOVEMENT FUNCTIONS
 --// ═════════════════════════════════════════════════════════════════════════════
 
-print("\nCargando funciones de movimiento...")
+print("\nLoading movement functions...")
 
 local function applyTeleportWalk()
     if not Config.EnableTeleportWalk then return end
@@ -531,7 +618,7 @@ local function ActivateFrontalJump()
             local isOnGround = (humanoidState == Enum.HumanoidStateType.Landed or humanoidState == Enum.HumanoidStateType.Running)
             
             if isOnGround then
-                --// Detectar si hay estructura adelante para aplicar impulso vertical
+                --// Detect if there's a structure ahead to apply vertical impulse
                 local lookDir = camera.CFrame.LookVector
                 lookDir = Vector3.new(lookDir.X, 0, lookDir.Z)
                 if lookDir.Magnitude ~= 0 then
@@ -547,10 +634,10 @@ local function ActivateFrontalJump()
                 local raycastResultFront = Workspace:Raycast(rayOriginFront, rayDirectionFront, raycastParamsFront)
                 
                 if raycastResultFront then
-                    --// Hay estructura adelante - hacer salto más potente
+                    --// Structure ahead - make jump more powerful
                     humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
                     
-                    --// Aplicar impulso vertical después de un pequeño delay
+                    --// Apply vertical impulse after a small delay
                     task.delay(0.1, function()
                         if char and root then
                             local jumpBoost = getgenv().FrontalJumpSpeed * getgenv().RampMultiplier * 0.8
@@ -564,7 +651,7 @@ local function ActivateFrontalJump()
                         end
                     end)
                 else
-                    --// Sin estructura, salto normal
+                    --// No structure, normal jump
                     humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
                 end
                 
@@ -608,7 +695,7 @@ local function applyFrontalJump()
                     lookDir = lookDir.Unit
                 end
                 
-                --// Detectar impacto frontal con estructuras MIENTRAS está en el aire
+                --// Detect frontal impact with structures WHILE in the air
                 local rayOriginFront = root.Position
                 local rayDirectionFront = lookDir * 10
                 local raycastParamsFront = RaycastParams.new()
@@ -618,13 +705,13 @@ local function applyFrontalJump()
                 local raycastResultFront = Workspace:Raycast(rayOriginFront, rayDirectionFront, raycastParamsFront)
                 
                 if raycastResultFront then
-                    --// Hay una estructura adelante MIENTRAS ESTÁ EN AIRE
+                    --// There's a structure ahead WHILE IN AIR
                     local impactForce = currentSpeed * getgenv().RampMultiplier
                     
                     local bv = Instance.new("BodyVelocity")
                     bv.Velocity = Vector3.new(
                         lookDir.X * impactForce,
-                        impactForce * 1.2,  --// Impulso vertical también
+                        impactForce * 1.2,  --// Vertical impulse too
                         lookDir.Z * impactForce
                     )
                     bv.MaxForce = Vector3.new(4e5, 4e5, 4e5)
@@ -634,7 +721,7 @@ local function applyFrontalJump()
                     Debris:AddItem(bv, 0.1)
                     activeBV = bv
                 else
-                    --// Sin estructura, impulso normal
+                    --// No structure, normal impulse
                     local bv = Instance.new("BodyVelocity")
                     bv.Velocity = lookDir * currentSpeed
                     bv.MaxForce = Vector3.new(4e5, 0, 4e5)
@@ -645,11 +732,11 @@ local function applyFrontalJump()
                     activeBV = bv
                 end
             else
-                --// En el suelo: Aplicar impulso Y acelerar para ganar potencia
+                --// On ground: Apply impulse AND accelerate to gain power
                 airAccumulator = airAccumulator + deltaTime
                 while airAccumulator >= 0.04 do
                     airAccumulator = airAccumulator - 0.04
-                    --// Acelerar lentamente pero CAPPED en velocidad base
+                    --// Accelerate slowly but CAPPED at base speed
                     currentSpeed = math.min(getgenv().FrontalJumpSpeed + 10, currentSpeed + 0.3)
                 end
                 
@@ -662,7 +749,7 @@ local function applyFrontalJump()
                     lookDir = lookDir.Unit
                 end
                 
-                --// RAYCAST FRONTAL - Detectar CUALQUIER estructura adelante
+                --// FRONTAL RAYCAST - Detect ANY structure ahead
                 local rayOrigin = root.Position
                 local rayDirection = Vector3.new(0, -5, 0)
                 local raycastParams = RaycastParams.new()
@@ -671,7 +758,7 @@ local function applyFrontalJump()
                 
                 local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
                 
-                --// RAYCAST FRONTAL - Detectar estructuras adelante (autos, rampas, etc)
+                --// FRONTAL RAYCAST - Detect structures ahead (cars, ramps, etc)
                 local rayOriginFront = root.Position
                 local rayDirectionFront = lookDir * 8
                 local raycastParamsFront = RaycastParams.new()
@@ -683,7 +770,7 @@ local function applyFrontalJump()
                 local impulsePower = currentSpeed
                 local hasStructureAhead = false
                 
-                --// Si hay estructura adelante, usar multiplicador
+                --// If there's structure ahead, use multiplier
                 if raycastResultFront then
                     hasStructureAhead = true
                     impulsePower = currentSpeed * getgenv().RampMultiplier
@@ -708,13 +795,13 @@ local function applyFrontalJump()
     end
 end
 
-print("✅ MOVIMIENTO: Funciones cargadas correctamente")
+print("✅ MOVEMENT: Functions loaded successfully")
 
 --// ═════════════════════════════════════════════════════════════════════════════
---// LOOP PRINCIPAL
+--// MAIN LOOP
 --// ═════════════════════════════════════════════════════════════════════════════
 
-print("\nActivando loop principal...")
+print("\nActivating main loop...")
 
 local connection = RunService.Heartbeat:Connect(function()
     pcall(function()
@@ -726,25 +813,25 @@ local connection = RunService.Heartbeat:Connect(function()
     end)
 end)
 
-print("✅ LOOP: Loop principal iniciado")
+print("✅ LOOP: Main loop started")
 
 print("\n" .. string.rep("=", 80))
-print("OK: EVADE v5.2 BETA - COMPLETAMENTE FUNCIONAL")
+print("OK: EVADE v5.2 BETA - FULLY FUNCTIONAL")
 print(string.rep("=", 80))
 
-print("\nRESUMEN:")
-print("   ✅ Libreria Yin Yang v27 Final cargada")
-print("   ✅ UI con 2 pestañas (Movimiento + Créditos)")
-print("   ✅ FloatingToggle en todas las opciones")
-print("   ✅ Jump Frontal AGREGADO a Movimiento")
-print("   ✅ Beta con rainbow Amarillo-Negro")
-print("   ✅ Funciones de movimiento COMPLETAS")
+print("\nSUMMARY:")
+print("   ✅ Yin Yang v27 Final library loaded")
+print("   ✅ UI with 2 tabs (Movement + Credits)")
+print("   ✅ FloatingToggle on all options")
+print("   ✅ Frontal Jump ADDED to Movement")
+print("   ✅ Beta with Yellow-Black rainbow")
+print("   ✅ Movement functions COMPLETE")
 
-print("\nCOMO USAR:")
-print("   1. Ve a la pestaña MOVIMIENTO")
-print("   2. Activa 'Jump Frontal' (verás 'Beta' en amarillo-negro)")
-print("   3. El efecto rainbow se mantiene al cambiar de tema")
-print("   4. Los FloatingToggle se pueden mover libremente")
+print("\nHOW TO USE:")
+print("   1. Go to the MOVEMENT tab")
+print("   2. Enable 'Frontal Jump' (you'll see 'Beta' in yellow-black)")
+print("   3. The rainbow effect stays when changing theme")
+print("   4. FloatingToggles can be moved freely")
 
 print("\n" .. string.rep("=", 80) .. "\n")
 
