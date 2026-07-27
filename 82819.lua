@@ -1,1 +1,838 @@
-local _z0=math.random;local _z1=os.clock;local _z2=tostring;local _z3=0;local _z4={};for _z5=1,12 do _z4[_z5]=_z0(1000,9999) end;local _z6=function(a,b,c) return (a*b)+c end;local _z7={n=_z4,v=_z3,t=_z1()};local _z8=function() _z3=_z3+1 return _z3 end;local _z9={_z6(3,7,1),_z6(5,2,8),_z6(9,1,4)};local _za=_z2(_z7.t);local _zb=_z8();local _zc=_z9[1]+_z9[2]; print("\n" .. string.rep("=", 80)) print("EVADE v5.2 BETA - FRONTAL JUMP + BETA NEW") print(string.rep("=", 80)) local Players = game:GetService("Players") local RunService = game:GetService("RunService") local UserInputService = game:GetService("UserInputService") local LocalPlayer = Players.LocalPlayer local Workspace = game:GetService("Workspace") local Debris = game:GetService("Debris") if not LocalPlayer then error("ERROR: No local player available") return end print("\nSERVICES: Initialized successfully") local _Aa = { TeleportMovementSpeed = 5, EnableTeleportWalk = false, JumpHeight = 50, EnableEnhancedJump = false, AutoJump = false, EnableGravityMod = false, GravityScale = 0.5, EnableFrontalJump = false, } local _Al = Workspace.CurrentCamera getgenv().FrontalJumpSpeed = 42 getgenv().RampMultiplier = 1.55 local _Ak = 80 local _Ad = getgenv().FrontalJumpSpeed local _Ae = 0 local _Af = tick() local _Ag = false local _Ah = nil local _Ai = tick() local _Aj = 0.65 local _Ab = { EnableTeleportWalk = false, EnableEnhancedJump = false, EnableGravityMod = false, } local HttpService = game:GetService("HttpService") local _Ac = "EVADE_V52_Settings.json" local function _Ba() pcall(function() local _Ap = { EnableTeleportWalk = _Aa.EnableTeleportWalk, TeleportMovementSpeed = _Aa.TeleportMovementSpeed, EnableEnhancedJump = _Aa.EnableEnhancedJump, JumpHeight = _Aa.JumpHeight, AutoJump = _Aa.AutoJump, EnableGravityMod = _Aa.EnableGravityMod, GravityScale = _Aa.GravityScale, EnableFrontalJump = _Aa.EnableFrontalJump, FrontalJumpSpeed = getgenv().FrontalJumpSpeed, RampMultiplier = getgenv().RampMultiplier, } writefile(_Ac, HttpService:JSONEncode(_Ap)) end) end local function _Bb() local _An, _Ao = pcall(function() if isfile and isfile(_Ac) then local _Aq = readfile(_Ac) if _Aq and _Aq ~= "" then return HttpService:JSONDecode(_Aq) end end return nil end) if _An and _Ao then if _Ao.EnableTeleportWalk ~= nil then _Aa.EnableTeleportWalk = _Ao.EnableTeleportWalk end if _Ao.TeleportMovementSpeed ~= nil then _Aa.TeleportMovementSpeed = _Ao.TeleportMovementSpeed end if _Ao.EnableEnhancedJump ~= nil then _Aa.EnableEnhancedJump = _Ao.EnableEnhancedJump end if _Ao.JumpHeight ~= nil then _Aa.JumpHeight = _Ao.JumpHeight end if _Ao.AutoJump ~= nil then _Aa.AutoJump = _Ao.AutoJump end if _Ao.EnableGravityMod ~= nil then _Aa.EnableGravityMod = _Ao.EnableGravityMod end if _Ao.GravityScale ~= nil then _Aa.GravityScale = _Ao.GravityScale end if _Ao.EnableFrontalJump ~= nil then _Aa.EnableFrontalJump = _Ao.EnableFrontalJump end if _Ao.FrontalJumpSpeed ~= nil then getgenv().FrontalJumpSpeed = _Ao.FrontalJumpSpeed end if _Ao.RampMultiplier ~= nil then getgenv().RampMultiplier = _Ao.RampMultiplier end print("SETTINGS: Previous configuration loaded successfully") else print("SETTINGS: No saved configuration found, using defaults") end end _Bb() _Ad = getgenv().FrontalJumpSpeed print("CONFIGURATION: Initialized") print("\nLoading Yin Yang v28 Final from GitHub...") local _At = pcall(function() loadstring(game:HttpGet((function() local _u="" local _t={104,116,116,112,115,58,47,47,114,97,119,46,103,105,116,104,117,98,117,115,101,114,99,111,110,116,101,110,116,46,99,111,109,47,77,111,108,105,105,110,105,101,114,47,89,105,110,45,121,97,110,103,47,114,101,102,115,47,104,101,97,100,115,47,109,97,105,110,47,89,105,110,95,89,97,110,103,95,118,50,56,95,84,82,65,78,83,76,65,84,69,95,102,105,120,101,100,95,110,111,95,100,101,109,111,46,108,117,97} local _sc=string.char for _i=1,#_t do _u=_u.._sc(_t[_i]) end return _u end)()))() end) if not _At or not _G.YinYang then error("ERROR: Failed to load Yin Yang v28 Final") return end print("LIBRARY: Yin Yang v28 Final loaded successfully") task.wait(0.5) print("SYSTEM: Initialization completed") print("\nCreating EVADE v5.2 Beta interface...") local function _Bc() local _As = "Dark" pcall(function() if isfile and isfile("Yin_Yang_Config.txt") then local _Aq = readfile("Yin_Yang_Config.txt") if _Aq and _Aq ~= "" then local _Ar = _Aq:match("theme:([^|]+)") if _Ar then _As = _Ar end end end end) return _As end local _Ca = _G.YinYang:CreateWindow("EVADE v7 BETA", _Bc()) local function _Bd() local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui") task.wait(0.8) if PlayerGui:FindFirstChild("Yin") then local _Cc = PlayerGui.Yin local _Cd = _Cc:FindFirstChild("TitleLabel") if _Cd then print("Creating inverse rainbow effect with two TextLabels...") local _Cg = _Cd.Text local _Ch = _Cd.Size local _Ci = _Cd.Position local _Cj = _Cd.Font local _Ck = _Cd.TextSize _Cd.TextTransparency = 1 local _Ce = Instance.new("TextLabel") _Ce.Name = "EvadeLabel" _Ce.Text = "EVADE" _Ce.Font = _Cj _Ce.TextSize = _Ck _Ce.BackgroundTransparency = 1 _Ce.TextColor3 = Color3.fromRGB(255, 255, 255) _Ce.Size = UDim2.new(0.6, 0, 1, 0) _Ce.Position = UDim2.new(0, 0, 0, 0) _Ce.TextXAlignment = Enum.TextXAlignment.Left _Ce.ZIndex = _Cd.ZIndex + 1 _Ce.Parent = _Cd.Parent local _Cf = Instance.new("TextLabel") _Cf.Name = "BetaLabel" _Cf.Text = "v5.2 Beta" _Cf.Font = _Cj _Cf.TextSize = _Ck _Cf.BackgroundTransparency = 1 _Cf.TextColor3 = Color3.fromRGB(0, 0, 0) _Cf.Size = UDim2.new(0.4, 0, 1, 0) _Cf.Position = UDim2.new(0.6, 0, 0, 0) _Cf.TextXAlignment = Enum.TextXAlignment.Left _Cf.ZIndex = _Cd.ZIndex + 1 _Cf.Parent = _Cd.Parent print("✅ Labels created: _Ce + BetaLabel") local cycleCount = 0 local rainbow = RunService.RenderStepped:Connect(function() if not _Ce or not _Ce.Parent or not _Cf or not _Cf.Parent then rainbow:Disconnect() return end cycleCount = cycleCount + 1 local progress = (cycleCount % 120) / 120 if progress < 0.5 then local t = progress * 2 local evadeBrightness = 1 - t _Ce.TextColor3 = Color3.fromRGB( math.floor(255 * evadeBrightness), math.floor(255 * evadeBrightness), math.floor(255 * evadeBrightness) ) local betaBrightness = t _Cf.TextColor3 = Color3.fromRGB( math.floor(255 * betaBrightness), math.floor(255 * betaBrightness), math.floor(255 * betaBrightness) ) else local t = (progress - 0.5) * 2 local evadeBrightness = t _Ce.TextColor3 = Color3.fromRGB( math.floor(255 * evadeBrightness), math.floor(255 * evadeBrightness), math.floor(255 * evadeBrightness) ) local betaBrightness = 1 - t _Cf.TextColor3 = Color3.fromRGB( math.floor(255 * betaBrightness), math.floor(255 * betaBrightness), math.floor(255 * betaBrightness) ) end end) print("✅ Inverse rainbow effect activated") end end end task.delay(1, _Bd) local TabMovement = _Ca:CreateTab("Movement", "rbxassetid://102227126804065") local TabCreditos = _Ca:CreateTab("Credits", "rbxassetid://92077096693208") print("TABS: Created (Movement + Credits)") print("\nConfiguring Movement tab...") TabMovement:CreateLabel("BASIC MOVEMENT", 14) TabMovement:CreateDivider() TabMovement:CreateFloatingToggle("Teleport Walk", _Aa.EnableTeleportWalk, function(state) _Aa.EnableTeleportWalk = state print(state and "✅ Teleport Walk ENABLED" or "❌ Teleport Walk DISABLED") _Ba() end) TabMovement:CreateSlider( "Teleport Speed", 1, 50, _Aa.TeleportMovementSpeed, function(_Ar) _Aa.TeleportMovementSpeed = _Ar print("✓ Teleport speed: " .. _Ar) _Ba() end ) TabMovement:CreateDivider() TabMovement:CreateFloatingToggle("Enhanced Jump", _Aa.EnableEnhancedJump, function(state) _Aa.EnableEnhancedJump = state print(state and "✅ Enhanced Jump ENABLED" or "❌ Enhanced Jump DISABLED") _Ba() end) TabMovement:CreateSlider( "Jump Height", 20, 300, _Aa.JumpHeight, function(_Ar) _Aa.JumpHeight = _Ar print("✓ Jump height: " .. _Ar) _Ba() end ) TabMovement:CreateDivider() TabMovement:CreateFloatingToggle("Auto Jump", _Aa.AutoJump, function(state) _Aa.AutoJump = state print(state and "✅ Auto Jump ENABLED" or "❌ Auto Jump DISABLED") _Ba() end) TabMovement:CreateDivider() TabMovement:CreateLabel("FRONTAL JUMP", 14) TabMovement:CreateDivider() TabMovement:CreateFloatingToggle("Frontal Jump", _Aa.EnableFrontalJump, function(state) _Aa.EnableFrontalJump = state if state then _Ab.EnableTeleportWalk = _Aa.EnableTeleportWalk _Ab.EnableEnhancedJump = _Aa.EnableEnhancedJump _Ab.EnableGravityMod = _Aa.EnableGravityMod _Aa.EnableTeleportWalk = false _Aa.EnableEnhancedJump = false _Aa.EnableGravityMod = false _Ai = tick() _Ad = getgenv().FrontalJumpSpeed _Ae = 0 print("✅ Frontal Jump ENABLED - Beta") print(" - Teleport Walk disabled") print(" - Enhanced Jump disabled") print(" - Gravity Mod disabled") else _Aa.EnableTeleportWalk = _Ab.EnableTeleportWalk _Aa.EnableEnhancedJump = _Ab.EnableEnhancedJump _Aa.EnableGravityMod = _Ab.EnableGravityMod if _Ah then _Ah:Destroy() end _Ah = nil _Ad = getgenv().FrontalJumpSpeed print("❌ Frontal Jump DISABLED") print(" - Options restored") end _Ba() end) TabMovement:CreateSlider( "Movement Speed", 50, 110, getgenv().FrontalJumpSpeed, function(_Ar) getgenv().FrontalJumpSpeed = _Ar _Ad = _Ar print("✓ Frontal Jump Speed: " .. _Ar) _Ba() end ) TabMovement:CreateSlider( "Ramp Multiplier", 1.0, 5.0, getgenv().RampMultiplier, function(_Ar) getgenv().RampMultiplier = _Ar print("✓ Ramp Multiplier: " .. _Ar) _Ba() end ) TabMovement:CreateDivider() TabMovement:CreateLabel("GRAVITY MODIFICATION", 14) TabMovement:CreateDivider() TabMovement:CreateFloatingToggle("Gravity Mod Enabled", _Aa.EnableGravityMod, function(state) _Aa.EnableGravityMod = state print(state and "✅ Gravity Mod ENABLED" or "❌ Gravity Mod DISABLED") _Ba() end) TabMovement:CreateSlider( "Gravity Scale", 0.1, 2, _Aa.GravityScale, function(_Ar) _Aa.GravityScale = _Ar print("✓ Gravity Scale: " .. _Ar) _Ba() end ) print("✅ MOVEMENT: Tab completed") local function setupBetaNewRainbow() local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui") task.wait(1.2) if PlayerGui:FindFirstChild("Yin") then local _Cc = PlayerGui.Yin for _, child in pairs(_Cc:GetDescendants()) do if child:IsA("TextLabel") and child.Text:find("Frontal Jump") then local parentFrame = child.Parent if parentFrame then local BetaNewLabel = Instance.new("TextLabel") BetaNewLabel.Name = "BetaLabel" BetaNewLabel.Text = "Beta" BetaNewLabel.Font = Enum.Font.GothamBold BetaNewLabel.TextSize = 12 BetaNewLabel.BackgroundTransparency = 1 BetaNewLabel.TextColor3 = Color3.fromRGB(255, 255, 0) BetaNewLabel.Size = UDim2.new(0.25, 0, 1, 0) BetaNewLabel.Position = UDim2.new(0.7, 0, 0, 0) BetaNewLabel.TextXAlignment = Enum.TextXAlignment.Right BetaNewLabel.ZIndex = child.ZIndex + 2 BetaNewLabel.Parent = parentFrame print("✨ Creating Yellow-Black rainbow effect for Beta...") local cycleCount = 0 local rainbowBetaNew = RunService.RenderStepped:Connect(function() if not BetaNewLabel or not BetaNewLabel.Parent then rainbowBetaNew:Disconnect() return end cycleCount = cycleCount + 1 local progress = (cycleCount % 120) / 120 if progress < 0.5 then local t = progress * 2 local brightness = 1 - t BetaNewLabel.TextColor3 = Color3.fromRGB( math.floor(255 * brightness), math.floor(255 * brightness), 0 ) else local t = (progress - 0.5) * 2 local brightness = t BetaNewLabel.TextColor3 = Color3.fromRGB( math.floor(255 * brightness), math.floor(255 * brightness), 0 ) end end) print("✅ Yellow-Black rainbow effect activated for Beta") return end end end end end task.delay(1.5, setupBetaNewRainbow) print("\nConfiguring Credits tab...") TabCreditos:CreateLabel("EVADE v5.2 Beta", 14) TabCreditos:CreateDivider() TabCreditos:CreateLabel("Developed by: MOFUZII", 12) TabCreditos:CreateLabel("Framework: Yin Yang v27 Final", 11) TabCreditos:CreateLabel("Status: Fully Functional ✅", 11) TabCreditos:CreateDivider() TabCreditos:CreateLabel("Features:", 12) TabCreditos:CreateLabel("✓ Teleport Walk (Floating)", 11) TabCreditos:CreateLabel("✓ Enhanced Jump (Floating)", 11) TabCreditos:CreateLabel("✓ Auto Jump (Floating)", 11) TabCreditos:CreateLabel("✓ Frontal Jump (Floating) NEW", 11) TabCreditos:CreateLabel("✓ Gravity Modification (Floating)", 11) TabCreditos:CreateDivider() TabCreditos:CreateLabel("SPECIAL EFFECT:", 12) TabCreditos:CreateLabel("Inverse Rainbow Title", 11) TabCreditos:CreateLabel("Beta New (Yellow ↔ Black)", 11) print("✅ CREDITS: Tab completed") print("\n✅ OK: INTERFACE FULLY CONFIGURED") print("\nLoading movement functions...") local function _Be() if not _Aa.EnableTeleportWalk then return end local _Da = LocalPlayer.Character if not _Da or not _Da.PrimaryPart then return end local hum = _Da:FindFirstChildOfClass("Humanoid") if not hum or hum.Health <= 0 then return end if hum.MoveDirection.Magnitude > 0 then pcall(function() _Da:TranslateBy(hum.MoveDirection * _Aa.TeleportMovementSpeed * 0.1) end) end end local function _Bf() if not _Aa.EnableEnhancedJump then return end local _Da = LocalPlayer.Character if not _Da or not _Da:FindFirstChild("Humanoid") then return end local hum = _Da.Humanoid if hum.Health <= 0 then return end if hum:GetState() ~= Enum.HumanoidStateType.Jumping then pcall(function() hum.JumpPower = _Aa.JumpHeight hum.UseJumpPower = true end) end end local function _Bg() if not _Aa.AutoJump then return end local _Da = LocalPlayer.Character if not _Da then return end local hum = _Da:FindFirstChildOfClass("Humanoid") if not hum or hum.Health <= 0 then return end if hum:GetState() == Enum.HumanoidStateType.Running then pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end) end end local function _Bh() if not _Aa.EnableGravityMod then return end local _Da = LocalPlayer.Character if not _Da or not _Da:FindFirstChild("Humanoid") or not _Da:FindFirstChild("HumanoidRootPart") then return end local hum = _Da.Humanoid local rootPart = _Da.HumanoidRootPart if hum.Health <= 0 then return end pcall(function() local velocity = rootPart.AssemblyLinearVelocity if velocity.Y < 0 then rootPart.AssemblyLinearVelocity = Vector3.new( velocity.X, velocity.Y * _Aa.GravityScale, velocity.Z ) end end) end local function _Bj() local _Da = LocalPlayer.Character if _Da then local _Db = _Da:FindFirstChild("HumanoidRootPart") local _Dc = _Da:FindFirstChild("Humanoid") if _Db and _Dc then local humanoidState = _Dc:GetState() local isOnGround = (humanoidState == Enum.HumanoidStateType.Landed or humanoidState == Enum.HumanoidStateType.Running) if isOnGround then local _Dd = _Al.CFrame.LookVector _Dd = Vector3.new(_Dd.X, 0, _Dd.Z) if _Dd.Magnitude ~= 0 then _Dd = _Dd.Unit end local _Dk = _Db.Position local _Dl = _Dd * 10 local _Dm = RaycastParams.new() _Dm.FilterType = Enum.RaycastFilterType.Blacklist _Dm.FilterDescendantsInstances = {_Da} local _Dn = Workspace:Raycast(_Dk, _Dl, _Dm) if _Dn then _Dc:ChangeState(Enum.HumanoidStateType.Jumping) task.delay(0.1, function() if _Da and _Db then local jumpBoost = getgenv().FrontalJumpSpeed * getgenv().RampMultiplier * 0.8 pcall(function() _Db.AssemblyLinearVelocity = Vector3.new( _Db.AssemblyLinearVelocity.X, jumpBoost, _Db.AssemblyLinearVelocity.Z ) end) end end) else _Dc:ChangeState(Enum.HumanoidStateType.Jumping) end _Ai = tick() end end end end local function _Bi() if not _Aa.EnableFrontalJump then return end local _Df = tick() - _Af _Af = tick() local _Da = LocalPlayer.Character if _Da then local _Db = _Da:FindFirstChild("HumanoidRootPart") local _Dc = _Da:FindFirstChild("Humanoid") if _Db and _Dc then local isAir = _Dc.FloorMaterial == Enum.Material.Air local humanoidState = _Dc:GetState() local isOnGround = (humanoidState == Enum.HumanoidStateType.Landed or humanoidState == Enum.HumanoidStateType.Running) and not isAir local hitObject = false if _Ag and isOnGround then hitObject = true _Ad = getgenv().FrontalJumpSpeed _Ae = 0 end _Ag = isAir if isAir then if _Ah then _Ah:Destroy() end local _Dd = _Al.CFrame.LookVector _Dd = Vector3.new(_Dd.X, 0, _Dd.Z) if _Dd.Magnitude ~= 0 then _Dd = _Dd.Unit end local _Dk = _Db.Position local _Dl = _Dd * 10 local _Dm = RaycastParams.new() _Dm.FilterType = Enum.RaycastFilterType.Blacklist _Dm.FilterDescendantsInstances = {_Da} local _Dn = Workspace:Raycast(_Dk, _Dl, _Dm) if _Dn then local impactForce = _Ad * getgenv().RampMultiplier local _De = Instance.new("BodyVelocity") _De.Velocity = Vector3.new( _Dd.X * impactForce, impactForce * 1.2, _Dd.Z * impactForce ) _De.MaxForce = Vector3.new(4e5, 4e5, 4e5) _De.P = 1250 _De.Parent = _Db Debris:AddItem(_De, 0.1) _Ah = _De else local _De = Instance.new("BodyVelocity") _De.Velocity = _Dd * _Ad _De.MaxForce = Vector3.new(4e5, 0, 4e5) _De.P = 1250 _De.Parent = _Db Debris:AddItem(_De, 0.1) _Ah = _De end else _Ae = _Ae + _Df while _Ae >= 0.04 do _Ae = _Ae - 0.04 _Ad = math.min(getgenv().FrontalJumpSpeed + 10, _Ad + 0.3) end if _Ah then _Ah:Destroy() end local _Dd = _Al.CFrame.LookVector _Dd = Vector3.new(_Dd.X, 0, _Dd.Z) if _Dd.Magnitude ~= 0 then _Dd = _Dd.Unit end local _Dg = _Db.Position local _Dh = Vector3.new(0, -5, 0) local _Di = RaycastParams.new() _Di.FilterType = Enum.RaycastFilterType.Blacklist _Di.FilterDescendantsInstances = {_Da} local _Dj = Workspace:Raycast(_Dg, _Dh, _Di) local _Dk = _Db.Position local _Dl = _Dd * 8 local _Dm = RaycastParams.new() _Dm.FilterType = Enum.RaycastFilterType.Blacklist _Dm.FilterDescendantsInstances = {_Da} local _Dn = Workspace:Raycast(_Dk, _Dl, _Dm) local _Do = _Ad local _Dp = false if _Dn then _Dp = true _Do = _Ad * getgenv().RampMultiplier end local _De = Instance.new("BodyVelocity") _De.Velocity = _Dd * _Do _De.MaxForce = Vector3.new(4e5, 0, 4e5) _De.P = 1250 _De.Parent = _Db Debris:AddItem(_De, 0.1) _Ah = _De _Ad = math.max(getgenv().FrontalJumpSpeed, _Ad - 2.5 * _Df) if tick() - _Ai >= _Aj then _Bj() end end end end end print("✅ MOVEMENT: Functions loaded successfully") print("\nActivating main loop...") local _Am = RunService.Heartbeat:Connect(function() pcall(function() _Be() _Bf() _Bg() _Bh() _Bi() end) end) print("✅ LOOP: Main loop started") print("\n" .. string.rep("=", 80)) print("OK: EVADE v5.2 BETA - FULLY FUNCTIONAL") print(string.rep("=", 80)) print("\nSUMMARY:") print(" ✅ Yin Yang v27 Final library loaded") print(" ✅ _Ca with 2 tabs (Movement + Credits)") print(" ✅ FloatingToggle on all options") print(" ✅ Frontal Jump ADDED to Movement") print(" ✅ Beta with Yellow-Black rainbow") print(" ✅ Movement functions COMPLETE") print("\nHOW TO USE:") print(" 1. Go to the MOVEMENT tab") print(" 2. Enable 'Frontal Jump' (you'll see 'Beta' in yellow-black)") print(" 3. The rainbow effect stays when changing theme") print(" 4. FloatingToggles can be moved freely") print("\n" .. string.rep("=", 80) .. "\n") return _Ca
+--[[
+    ═══════════════════════════════════════════════════════════════════════════
+    EVADE V7 BETA - FRONTAL JUMP + BETA NEW RAINBOW
+    ═══════════════════════════════════════════════════════════════════════════
+]]
+
+print("\n" .. string.rep("=", 80))
+print("EVADE v5.2 BETA - FRONTAL JUMP + BETA NEW")
+print(string.rep("=", 80))
+
+--// SERVICES
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+local Debris = game:GetService("Debris")
+
+if not LocalPlayer then
+    error("ERROR: No local player available")
+    return
+end
+
+print("\nSERVICES: Initialized successfully")
+
+--// ═════════════════════════════════════════════════════════════════════════════
+--// MAIN CONFIGURATION
+--// ═════════════════════════════════════════════════════════════════════════════
+
+local Config = {
+    --// BASIC MOVEMENT
+    TeleportMovementSpeed = 5,
+    EnableTeleportWalk = false,
+    JumpHeight = 50,
+    EnableEnhancedJump = false,
+    AutoJump = false,
+    
+    --// GRAVITY MODIFICATION
+    EnableGravityMod = false,
+    GravityScale = 0.5,
+    
+    --// FRONTAL JUMP
+    EnableFrontalJump = false,
+}
+
+--// Frontal Jump Variables
+local camera = Workspace.CurrentCamera
+getgenv().FrontalJumpSpeed = 42
+getgenv().RampMultiplier = 1.55
+local maxExtraSpeed = 80
+local currentSpeed = getgenv().FrontalJumpSpeed
+local airAccumulator = 0
+local lastTick = tick()
+local wasAir = false
+local activeBV = nil
+local lastJumpTime = tick()
+local jumpInterval = 0.65
+
+--// Variables to save options state
+local savedOptions = {
+    EnableTeleportWalk = false,
+    EnableEnhancedJump = false,
+    EnableGravityMod = false,
+}
+
+--// ═════════════════════════════════════════════════════════════════════════════
+--// SETTINGS SAVE/LOAD SYSTEM
+--// ═════════════════════════════════════════════════════════════════════════════
+
+local HttpService = game:GetService("HttpService")
+local SettingsFile = "EVADE_V52_Settings.json"
+
+local function SaveSettings()
+    pcall(function()
+        local data = {
+            EnableTeleportWalk = Config.EnableTeleportWalk,
+            TeleportMovementSpeed = Config.TeleportMovementSpeed,
+            EnableEnhancedJump = Config.EnableEnhancedJump,
+            JumpHeight = Config.JumpHeight,
+            AutoJump = Config.AutoJump,
+            EnableGravityMod = Config.EnableGravityMod,
+            GravityScale = Config.GravityScale,
+            EnableFrontalJump = Config.EnableFrontalJump,
+            FrontalJumpSpeed = getgenv().FrontalJumpSpeed,
+            RampMultiplier = getgenv().RampMultiplier,
+        }
+        writefile(SettingsFile, HttpService:JSONEncode(data))
+    end)
+end
+
+local function LoadSettings()
+    local ok, result = pcall(function()
+        if isfile and isfile(SettingsFile) then
+            local content = readfile(SettingsFile)
+            if content and content ~= "" then
+                return HttpService:JSONDecode(content)
+            end
+        end
+        return nil
+    end)
+
+    if ok and result then
+        if result.EnableTeleportWalk ~= nil then Config.EnableTeleportWalk = result.EnableTeleportWalk end
+        if result.TeleportMovementSpeed ~= nil then Config.TeleportMovementSpeed = result.TeleportMovementSpeed end
+        if result.EnableEnhancedJump ~= nil then Config.EnableEnhancedJump = result.EnableEnhancedJump end
+        if result.JumpHeight ~= nil then Config.JumpHeight = result.JumpHeight end
+        if result.AutoJump ~= nil then Config.AutoJump = result.AutoJump end
+        if result.EnableGravityMod ~= nil then Config.EnableGravityMod = result.EnableGravityMod end
+        if result.GravityScale ~= nil then Config.GravityScale = result.GravityScale end
+        if result.EnableFrontalJump ~= nil then Config.EnableFrontalJump = result.EnableFrontalJump end
+        if result.FrontalJumpSpeed ~= nil then getgenv().FrontalJumpSpeed = result.FrontalJumpSpeed end
+        if result.RampMultiplier ~= nil then getgenv().RampMultiplier = result.RampMultiplier end
+        print("SETTINGS: Previous configuration loaded successfully")
+    else
+        print("SETTINGS: No saved configuration found, using defaults")
+    end
+end
+
+LoadSettings()
+
+--// Resync currentSpeed with the loaded FrontalJumpSpeed value
+currentSpeed = getgenv().FrontalJumpSpeed
+
+print("CONFIGURATION: Initialized")
+
+--// ═════════════════════════════════════════════════════════════════════════════
+--// LOAD YIN YANG v28 FINAL
+--// ═════════════════════════════════════════════════════════════════════════════
+
+print("\nLoading Yin Yang v28 Final from GitHub...")
+
+local success = pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Yinyangzx/Yin/refs/heads/main/Yin"))()
+end)
+
+if not success or not _G.YinYang then
+    error("ERROR: Failed to load Yin Yang v28 Final")
+    return
+end
+
+print("LIBRARY: Yin Yang v28 Final loaded successfully")
+task.wait(0.5)
+
+print("SYSTEM: Initialization completed")
+
+--// ═════════════════════════════════════════════════════════════════════════════
+--// CREATE UI
+--// ═════════════════════════════════════════════════════════════════════════════
+
+print("\nCreating EVADE v5.2 Beta interface...")
+
+--// Read the theme saved by the Yin Yang library itself (Yin_Yang_Config.txt)
+--// The library saves the theme correctly on change, but its own CreateWindow
+--// never re-applies it on load - so we read the same file here and pass it in.
+local function GetSavedTheme()
+    local theme = "Dark"
+    pcall(function()
+        if isfile and isfile("Yin_Yang_Config.txt") then
+            local content = readfile("Yin_Yang_Config.txt")
+            if content and content ~= "" then
+                local value = content:match("theme:([^|]+)")
+                if value then
+                    theme = value
+                end
+            end
+        end
+    end)
+    return theme
+end
+
+local UI = _G.YinYang:CreateWindow("EVADE v7 BETA", GetSavedTheme())
+
+--// ═════════════════════════════════════════════════════════════════════════════
+--// INVERSE RAINBOW EFFECT FOR TITLE
+--// ═════════════════════════════════════════════════════════════════════════════
+
+local function setupRainbowInversedTitle()
+    local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+    
+    task.wait(0.8)
+    
+    if PlayerGui:FindFirstChild("Yin") then
+        local ScreenGui = PlayerGui.Yin
+        local TitleLabel = ScreenGui:FindFirstChild("TitleLabel")
+        
+        if TitleLabel then
+            print("Creating inverse rainbow effect with two TextLabels...")
+            
+            --// Get position and size of the original title
+            local origText = TitleLabel.Text
+            local origSize = TitleLabel.Size
+            local origPos = TitleLabel.Position
+            local origFont = TitleLabel.Font
+            local origTextSize = TitleLabel.TextSize
+            
+            --// Make original title invisible
+            TitleLabel.TextTransparency = 1
+            
+            --// Create TextLabel for "EVADE" (White → Black)
+            local EvadeLabel = Instance.new("TextLabel")
+            EvadeLabel.Name = "EvadeLabel"
+            EvadeLabel.Text = "EVADE"
+            EvadeLabel.Font = origFont
+            EvadeLabel.TextSize = origTextSize
+            EvadeLabel.BackgroundTransparency = 1
+            EvadeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            EvadeLabel.Size = UDim2.new(0.6, 0, 1, 0)
+            EvadeLabel.Position = UDim2.new(0, 0, 0, 0)
+            EvadeLabel.TextXAlignment = Enum.TextXAlignment.Left
+            EvadeLabel.ZIndex = TitleLabel.ZIndex + 1
+            EvadeLabel.Parent = TitleLabel.Parent
+            
+            --// Create TextLabel for "Beta" (Black → White)
+            local BetaLabel = Instance.new("TextLabel")
+            BetaLabel.Name = "BetaLabel"
+            BetaLabel.Text = "v5.2 Beta"
+            BetaLabel.Font = origFont
+            BetaLabel.TextSize = origTextSize
+            BetaLabel.BackgroundTransparency = 1
+            BetaLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+            BetaLabel.Size = UDim2.new(0.4, 0, 1, 0)
+            BetaLabel.Position = UDim2.new(0.6, 0, 0, 0)
+            BetaLabel.TextXAlignment = Enum.TextXAlignment.Left
+            BetaLabel.ZIndex = TitleLabel.ZIndex + 1
+            BetaLabel.Parent = TitleLabel.Parent
+            
+            print("✅ Labels created: EvadeLabel + BetaLabel")
+            
+            --// Animate INVERSE colors
+            local cycleCount = 0
+            local rainbow = RunService.RenderStepped:Connect(function()
+                if not EvadeLabel or not EvadeLabel.Parent or not BetaLabel or not BetaLabel.Parent then
+                    rainbow:Disconnect()
+                    return
+                end
+                
+                cycleCount = cycleCount + 1
+                local progress = (cycleCount % 120) / 120
+                
+                if progress < 0.5 then
+                    local t = progress * 2
+                    
+                    local evadeBrightness = 1 - t
+                    EvadeLabel.TextColor3 = Color3.fromRGB(
+                        math.floor(255 * evadeBrightness),
+                        math.floor(255 * evadeBrightness),
+                        math.floor(255 * evadeBrightness)
+                    )
+                    
+                    local betaBrightness = t
+                    BetaLabel.TextColor3 = Color3.fromRGB(
+                        math.floor(255 * betaBrightness),
+                        math.floor(255 * betaBrightness),
+                        math.floor(255 * betaBrightness)
+                    )
+                else
+                    local t = (progress - 0.5) * 2
+                    
+                    local evadeBrightness = t
+                    EvadeLabel.TextColor3 = Color3.fromRGB(
+                        math.floor(255 * evadeBrightness),
+                        math.floor(255 * evadeBrightness),
+                        math.floor(255 * evadeBrightness)
+                    )
+                    
+                    local betaBrightness = 1 - t
+                    BetaLabel.TextColor3 = Color3.fromRGB(
+                        math.floor(255 * betaBrightness),
+                        math.floor(255 * betaBrightness),
+                        math.floor(255 * betaBrightness)
+                    )
+                end
+            end)
+            
+            print("✅ Inverse rainbow effect activated")
+        end
+    end
+end
+
+task.delay(1, setupRainbowInversedTitle)
+
+--// ════════════════════════════════════════════════════════════════════════════
+--// CREATE TABS
+--// ════════════════════════════════════════════════════════════════════════════
+
+local TabMovement = UI:CreateTab("Movement", "rbxassetid://102227126804065")
+local TabCreditos = UI:CreateTab("Credits", "rbxassetid://92077096693208")
+
+print("TABS: Created (Movement + Credits)")
+
+--// ═════════════════════════════════════════════════════════════════════════════
+--// TAB: MOVEMENT
+--// ═════════════════════════════════════════════════════════════════════════════
+
+print("\nConfiguring Movement tab...")
+
+TabMovement:CreateLabel("BASIC MOVEMENT", 14)
+TabMovement:CreateDivider()
+
+TabMovement:CreateFloatingToggle("Teleport Walk", Config.EnableTeleportWalk, function(state)
+    Config.EnableTeleportWalk = state
+    print(state and "✅ Teleport Walk ENABLED" or "❌ Teleport Walk DISABLED")
+    SaveSettings()
+end)
+
+TabMovement:CreateSlider(
+    "Teleport Speed",
+    1, 50, Config.TeleportMovementSpeed,
+    function(value)
+        Config.TeleportMovementSpeed = value
+        print("✓ Teleport speed: " .. value)
+        SaveSettings()
+    end
+)
+
+TabMovement:CreateDivider()
+
+TabMovement:CreateFloatingToggle("Enhanced Jump", Config.EnableEnhancedJump, function(state)
+    Config.EnableEnhancedJump = state
+    print(state and "✅ Enhanced Jump ENABLED" or "❌ Enhanced Jump DISABLED")
+    SaveSettings()
+end)
+
+TabMovement:CreateSlider(
+    "Jump Height",
+    20, 300, Config.JumpHeight,
+    function(value)
+        Config.JumpHeight = value
+        print("✓ Jump height: " .. value)
+        SaveSettings()
+    end
+)
+
+TabMovement:CreateDivider()
+
+TabMovement:CreateFloatingToggle("Auto Jump", Config.AutoJump, function(state)
+    Config.AutoJump = state
+    print(state and "✅ Auto Jump ENABLED" or "❌ Auto Jump DISABLED")
+    SaveSettings()
+end)
+
+TabMovement:CreateDivider()
+
+--// FRONTAL JUMP WITH BETA NEW RAINBOW
+TabMovement:CreateLabel("FRONTAL JUMP", 14)
+TabMovement:CreateDivider()
+
+TabMovement:CreateFloatingToggle("Frontal Jump", Config.EnableFrontalJump, function(state)
+    Config.EnableFrontalJump = state
+    if state then
+        --// SAVE CURRENT OPTIONS STATE
+        savedOptions.EnableTeleportWalk = Config.EnableTeleportWalk
+        savedOptions.EnableEnhancedJump = Config.EnableEnhancedJump
+        savedOptions.EnableGravityMod = Config.EnableGravityMod
+        
+        --// DISABLE CONFLICTING OPTIONS
+        Config.EnableTeleportWalk = false
+        Config.EnableEnhancedJump = false
+        Config.EnableGravityMod = false
+        
+        --// INITIALIZE FRONTAL JUMP
+        lastJumpTime = tick()
+        currentSpeed = getgenv().FrontalJumpSpeed
+        airAccumulator = 0
+        
+        print("✅ Frontal Jump ENABLED - Beta")
+        print("   - Teleport Walk disabled")
+        print("   - Enhanced Jump disabled")
+        print("   - Gravity Mod disabled")
+    else
+        --// RESTORE SAVED OPTIONS
+        Config.EnableTeleportWalk = savedOptions.EnableTeleportWalk
+        Config.EnableEnhancedJump = savedOptions.EnableEnhancedJump
+        Config.EnableGravityMod = savedOptions.EnableGravityMod
+        
+        if activeBV then activeBV:Destroy() end
+        activeBV = nil
+        currentSpeed = getgenv().FrontalJumpSpeed
+        
+        print("❌ Frontal Jump DISABLED")
+        print("   - Options restored")
+    end
+    SaveSettings()
+end)
+
+TabMovement:CreateSlider(
+    "Movement Speed",
+    50, 110, getgenv().FrontalJumpSpeed,
+    function(value)
+        getgenv().FrontalJumpSpeed = value
+        currentSpeed = value
+        print("✓ Frontal Jump Speed: " .. value)
+        SaveSettings()
+    end
+)
+
+TabMovement:CreateSlider(
+    "Ramp Multiplier",
+    1.0, 5.0, getgenv().RampMultiplier,
+    function(value)
+        getgenv().RampMultiplier = value
+        print("✓ Ramp Multiplier: " .. value)
+        SaveSettings()
+    end
+)
+
+TabMovement:CreateDivider()
+TabMovement:CreateLabel("GRAVITY MODIFICATION", 14)
+TabMovement:CreateDivider()
+
+TabMovement:CreateFloatingToggle("Gravity Mod Enabled", Config.EnableGravityMod, function(state)
+    Config.EnableGravityMod = state
+    print(state and "✅ Gravity Mod ENABLED" or "❌ Gravity Mod DISABLED")
+    SaveSettings()
+end)
+
+TabMovement:CreateSlider(
+    "Gravity Scale",
+    0.1, 2, Config.GravityScale,
+    function(value)
+        Config.GravityScale = value
+        print("✓ Gravity Scale: " .. value)
+        SaveSettings()
+    end
+)
+
+print("✅ MOVEMENT: Tab completed")
+
+--// CREATE YELLOW-BLACK RAINBOW EFFECT FOR "Beta New"
+local function setupBetaNewRainbow()
+    local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+    task.wait(1.2)
+    
+    if PlayerGui:FindFirstChild("Yin") then
+        local ScreenGui = PlayerGui.Yin
+        
+        --// Find the "Frontal Jump" toggle in TabMovement
+        for _, child in pairs(ScreenGui:GetDescendants()) do
+            if child:IsA("TextLabel") and child.Text:find("Frontal Jump") then
+                local parentFrame = child.Parent
+                
+                if parentFrame then
+                    --// Create label for "Beta" with rainbow
+                    local BetaNewLabel = Instance.new("TextLabel")
+                    BetaNewLabel.Name = "BetaLabel"
+                    BetaNewLabel.Text = "Beta"
+                    BetaNewLabel.Font = Enum.Font.GothamBold
+                    BetaNewLabel.TextSize = 12
+                    BetaNewLabel.BackgroundTransparency = 1
+                    BetaNewLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                    BetaNewLabel.Size = UDim2.new(0.25, 0, 1, 0)
+                    BetaNewLabel.Position = UDim2.new(0.7, 0, 0, 0)
+                    BetaNewLabel.TextXAlignment = Enum.TextXAlignment.Right
+                    BetaNewLabel.ZIndex = child.ZIndex + 2
+                    BetaNewLabel.Parent = parentFrame
+                    
+                    print("✨ Creating Yellow-Black rainbow effect for Beta...")
+                    
+                    --// Animate Yellow ↔ Black colors
+                    local cycleCount = 0
+                    local rainbowBetaNew = RunService.RenderStepped:Connect(function()
+                        if not BetaNewLabel or not BetaNewLabel.Parent then
+                            rainbowBetaNew:Disconnect()
+                            return
+                        end
+                        
+                        cycleCount = cycleCount + 1
+                        local progress = (cycleCount % 120) / 120
+                        
+                        if progress < 0.5 then
+                            --// Yellow (255, 255, 0) → Black (0, 0, 0)
+                            local t = progress * 2
+                            local brightness = 1 - t
+                            
+                            BetaNewLabel.TextColor3 = Color3.fromRGB(
+                                math.floor(255 * brightness),
+                                math.floor(255 * brightness),
+                                0
+                            )
+                        else
+                            --// Black (0, 0, 0) → Yellow (255, 255, 0)
+                            local t = (progress - 0.5) * 2
+                            local brightness = t
+                            
+                            BetaNewLabel.TextColor3 = Color3.fromRGB(
+                                math.floor(255 * brightness),
+                                math.floor(255 * brightness),
+                                0
+                            )
+                        end
+                    end)
+                    
+                    print("✅ Yellow-Black rainbow effect activated for Beta")
+                    return
+                end
+            end
+        end
+    end
+end
+
+task.delay(1.5, setupBetaNewRainbow)
+
+--// ═════════════════════════════════════════════════════════════════════════════
+--// TAB: CREDITS
+--// ═════════════════════════════════════════════════════════════════════════════
+
+print("\nConfiguring Credits tab...")
+
+TabCreditos:CreateLabel("EVADE v5.2 Beta", 14)
+TabCreditos:CreateDivider()
+TabCreditos:CreateLabel("Developed by: MOFUZII", 12)
+TabCreditos:CreateLabel("Framework: Yin Yang v27 Final", 11)
+TabCreditos:CreateLabel("Status: Fully Functional ✅", 11)
+TabCreditos:CreateDivider()
+TabCreditos:CreateLabel("Features:", 12)
+TabCreditos:CreateLabel("✓ Teleport Walk (Floating)", 11)
+TabCreditos:CreateLabel("✓ Enhanced Jump (Floating)", 11)
+TabCreditos:CreateLabel("✓ Auto Jump (Floating)", 11)
+TabCreditos:CreateLabel("✓ Frontal Jump (Floating) NEW", 11)
+TabCreditos:CreateLabel("✓ Gravity Modification (Floating)", 11)
+TabCreditos:CreateDivider()
+TabCreditos:CreateLabel("SPECIAL EFFECT:", 12)
+TabCreditos:CreateLabel("Inverse Rainbow Title", 11)
+TabCreditos:CreateLabel("Beta New (Yellow ↔ Black)", 11)
+
+print("✅ CREDITS: Tab completed")
+
+print("\n✅ OK: INTERFACE FULLY CONFIGURED")
+
+--// ═════════════════════════════════════════════════════════════════════════════
+--// MOVEMENT FUNCTIONS
+--// ═════════════════════════════════════════════════════════════════════════════
+
+print("\nLoading movement functions...")
+
+local function applyTeleportWalk()
+    if not Config.EnableTeleportWalk then return end
+    
+    local char = LocalPlayer.Character
+    if not char or not char.PrimaryPart then return end
+    
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return end
+    
+    if hum.MoveDirection.Magnitude > 0 then
+        pcall(function()
+            char:TranslateBy(hum.MoveDirection * Config.TeleportMovementSpeed * 0.1)
+        end)
+    end
+end
+
+local function applyEnhancedJump()
+    if not Config.EnableEnhancedJump then return end
+    
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("Humanoid") then return end
+    
+    local hum = char.Humanoid
+    if hum.Health <= 0 then return end
+    
+    if hum:GetState() ~= Enum.HumanoidStateType.Jumping then
+        pcall(function()
+            hum.JumpPower = Config.JumpHeight
+            hum.UseJumpPower = true
+        end)
+    end
+end
+
+local function applyAutoJump()
+    if not Config.AutoJump then return end
+    
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return end
+    
+    if hum:GetState() == Enum.HumanoidStateType.Running then
+        pcall(function()
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end)
+    end
+end
+
+local function applyGravityModification()
+    if not Config.EnableGravityMod then return end
+    
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("Humanoid") or not char:FindFirstChild("HumanoidRootPart") then return end
+    
+    local hum = char.Humanoid
+    local rootPart = char.HumanoidRootPart
+    
+    if hum.Health <= 0 then return end
+    
+    pcall(function()
+        local velocity = rootPart.AssemblyLinearVelocity
+        
+        if velocity.Y < 0 then
+            rootPart.AssemblyLinearVelocity = Vector3.new(
+                velocity.X,
+                velocity.Y * Config.GravityScale,
+                velocity.Z
+            )
+        end
+    end)
+end
+
+--// FRONTAL JUMP FUNCTION
+local function ActivateFrontalJump()
+    local char = LocalPlayer.Character
+    if char then
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char:FindFirstChild("Humanoid")
+        
+        if root and humanoid then
+            local humanoidState = humanoid:GetState()
+            local isOnGround = (humanoidState == Enum.HumanoidStateType.Landed or humanoidState == Enum.HumanoidStateType.Running)
+            
+            if isOnGround then
+                --// Detect if there's a structure ahead to apply vertical impulse
+                local lookDir = camera.CFrame.LookVector
+                lookDir = Vector3.new(lookDir.X, 0, lookDir.Z)
+                if lookDir.Magnitude ~= 0 then
+                    lookDir = lookDir.Unit
+                end
+                
+                local rayOriginFront = root.Position
+                local rayDirectionFront = lookDir * 10
+                local raycastParamsFront = RaycastParams.new()
+                raycastParamsFront.FilterType = Enum.RaycastFilterType.Blacklist
+                raycastParamsFront.FilterDescendantsInstances = {char}
+                
+                local raycastResultFront = Workspace:Raycast(rayOriginFront, rayDirectionFront, raycastParamsFront)
+                
+                if raycastResultFront then
+                    --// Structure ahead - make jump more powerful
+                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                    
+                    --// Apply vertical impulse after a small delay
+                    task.delay(0.1, function()
+                        if char and root then
+                            local jumpBoost = getgenv().FrontalJumpSpeed * getgenv().RampMultiplier * 0.8
+                            pcall(function()
+                                root.AssemblyLinearVelocity = Vector3.new(
+                                    root.AssemblyLinearVelocity.X,
+                                    jumpBoost,
+                                    root.AssemblyLinearVelocity.Z
+                                )
+                            end)
+                        end
+                    end)
+                else
+                    --// No structure, normal jump
+                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+                
+                lastJumpTime = tick()
+            end
+        end
+    end
+end
+
+local function applyFrontalJump()
+    if not Config.EnableFrontalJump then return end
+    
+    local deltaTime = tick() - lastTick
+    lastTick = tick()
+    
+    local char = LocalPlayer.Character
+    if char then
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char:FindFirstChild("Humanoid")
+        
+        if root and humanoid then
+            local isAir = humanoid.FloorMaterial == Enum.Material.Air
+            local humanoidState = humanoid:GetState()
+            local isOnGround = (humanoidState == Enum.HumanoidStateType.Landed or humanoidState == Enum.HumanoidStateType.Running) and not isAir
+            
+            local hitObject = false
+            if wasAir and isOnGround then
+                hitObject = true
+                currentSpeed = getgenv().FrontalJumpSpeed
+                airAccumulator = 0
+            end
+            wasAir = isAir
+            
+            if isAir then
+                if activeBV then activeBV:Destroy() end
+                
+                local lookDir = camera.CFrame.LookVector
+                lookDir = Vector3.new(lookDir.X, 0, lookDir.Z)
+                
+                if lookDir.Magnitude ~= 0 then
+                    lookDir = lookDir.Unit
+                end
+                
+                --// Detect frontal impact with structures WHILE in the air
+                local rayOriginFront = root.Position
+                local rayDirectionFront = lookDir * 10
+                local raycastParamsFront = RaycastParams.new()
+                raycastParamsFront.FilterType = Enum.RaycastFilterType.Blacklist
+                raycastParamsFront.FilterDescendantsInstances = {char}
+                
+                local raycastResultFront = Workspace:Raycast(rayOriginFront, rayDirectionFront, raycastParamsFront)
+                
+                if raycastResultFront then
+                    --// There's a structure ahead WHILE IN AIR
+                    local impactForce = currentSpeed * getgenv().RampMultiplier
+                    
+                    local bv = Instance.new("BodyVelocity")
+                    bv.Velocity = Vector3.new(
+                        lookDir.X * impactForce,
+                        impactForce * 1.2,  --// Vertical impulse too
+                        lookDir.Z * impactForce
+                    )
+                    bv.MaxForce = Vector3.new(4e5, 4e5, 4e5)
+                    bv.P = 1250
+                    bv.Parent = root
+                    
+                    Debris:AddItem(bv, 0.1)
+                    activeBV = bv
+                else
+                    --// No structure, normal impulse
+                    local bv = Instance.new("BodyVelocity")
+                    bv.Velocity = lookDir * currentSpeed
+                    bv.MaxForce = Vector3.new(4e5, 0, 4e5)
+                    bv.P = 1250
+                    bv.Parent = root
+                    
+                    Debris:AddItem(bv, 0.1)
+                    activeBV = bv
+                end
+            else
+                --// On ground: Apply impulse AND accelerate to gain power
+                airAccumulator = airAccumulator + deltaTime
+                while airAccumulator >= 0.04 do
+                    airAccumulator = airAccumulator - 0.04
+                    --// Accelerate slowly but CAPPED at base speed
+                    currentSpeed = math.min(getgenv().FrontalJumpSpeed + 10, currentSpeed + 0.3)
+                end
+                
+                if activeBV then activeBV:Destroy() end
+                
+                local lookDir = camera.CFrame.LookVector
+                lookDir = Vector3.new(lookDir.X, 0, lookDir.Z)
+                
+                if lookDir.Magnitude ~= 0 then
+                    lookDir = lookDir.Unit
+                end
+                
+                --// FRONTAL RAYCAST - Detect ANY structure ahead
+                local rayOrigin = root.Position
+                local rayDirection = Vector3.new(0, -5, 0)
+                local raycastParams = RaycastParams.new()
+                raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+                raycastParams.FilterDescendantsInstances = {char}
+                
+                local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+                
+                --// FRONTAL RAYCAST - Detect structures ahead (cars, ramps, etc)
+                local rayOriginFront = root.Position
+                local rayDirectionFront = lookDir * 8
+                local raycastParamsFront = RaycastParams.new()
+                raycastParamsFront.FilterType = Enum.RaycastFilterType.Blacklist
+                raycastParamsFront.FilterDescendantsInstances = {char}
+                
+                local raycastResultFront = Workspace:Raycast(rayOriginFront, rayDirectionFront, raycastParamsFront)
+                
+                local impulsePower = currentSpeed
+                local hasStructureAhead = false
+                
+                --// If there's structure ahead, use multiplier
+                if raycastResultFront then
+                    hasStructureAhead = true
+                    impulsePower = currentSpeed * getgenv().RampMultiplier
+                end
+                
+                local bv = Instance.new("BodyVelocity")
+                bv.Velocity = lookDir * impulsePower
+                bv.MaxForce = Vector3.new(4e5, 0, 4e5)
+                bv.P = 1250
+                bv.Parent = root
+                
+                Debris:AddItem(bv, 0.1)
+                activeBV = bv
+                
+                currentSpeed = math.max(getgenv().FrontalJumpSpeed, currentSpeed - 2.5 * deltaTime)
+                
+                if tick() - lastJumpTime >= jumpInterval then
+                    ActivateFrontalJump()
+                end
+            end
+        end
+    end
+end
+
+print("✅ MOVEMENT: Functions loaded successfully")
+
+--// ═════════════════════════════════════════════════════════════════════════════
+--// MAIN LOOP
+--// ═════════════════════════════════════════════════════════════════════════════
+
+print("\nActivating main loop...")
+
+local connection = RunService.Heartbeat:Connect(function()
+    pcall(function()
+        applyTeleportWalk()
+        applyEnhancedJump()
+        applyAutoJump()
+        applyGravityModification()
+        applyFrontalJump()
+    end)
+end)
+
+print("✅ LOOP: Main loop started")
+
+print("\n" .. string.rep("=", 80))
+print("OK: EVADE v5.2 BETA - FULLY FUNCTIONAL")
+print(string.rep("=", 80))
+
+print("\nSUMMARY:")
+print("   ✅ Yin Yang v27 Final library loaded")
+print("   ✅ UI with 2 tabs (Movement + Credits)")
+print("   ✅ FloatingToggle on all options")
+print("   ✅ Frontal Jump ADDED to Movement")
+print("   ✅ Beta with Yellow-Black rainbow")
+print("   ✅ Movement functions COMPLETE")
+
+print("\nHOW TO USE:")
+print("   1. Go to the MOVEMENT tab")
+print("   2. Enable 'Frontal Jump' (you'll see 'Beta' in yellow-black)")
+print("   3. The rainbow effect stays when changing theme")
+print("   4. FloatingToggles can be moved freely")
+
+print("\n" .. string.rep("=", 80) .. "\n")
+
+return UI
