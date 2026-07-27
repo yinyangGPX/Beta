@@ -130,7 +130,7 @@ print("CONFIGURATION: Initialized")
 print("\nLoading Yin Yang v28 Final from GitHub...")
 
 local success = pcall(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Yinyangzx/Yin/refs/heads/main/Yin"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Yinyangzx/Yin/refs/heads/main/yin.lua"))()
 end)
 
 if not success or not _G.YinYang then
