@@ -1,1 +1,1 @@
-loadstring(game:HttpGet("https://surprising-love.up.railway.app/script"))()
+loadstring(game:HttpGet("https://yinyang.up.railway.app"))()
