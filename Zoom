@@ -59,6 +59,7 @@ local C = {
 
 -- ── DATOS DEL COMUNICADO ──────────────────────────────────────────
 local DISCORD_LINK = "https://discord.gg/57Pybzyh8"
+local YOUTUBE_LINK = "https://youtu.be/JSPu8DXilus?si=K-4vuc7PROCdRlG3"
 
 -- IMPORTANTE: URLs convertidas a raw.githubusercontent.com
 -- (github.com/blob/... no funciona como imagen directa — igual que
@@ -253,19 +254,49 @@ mk("Frame", {
     ZIndex           = 6,
 }, Footer)
 
+local FooterButtons = mk("Frame", {
+    Size                   = UDim2.new(1, -24, 0, isMobile and 36 or 40),
+    AnchorPoint            = Vector2.new(0.5, 0.5),
+    Position               = UDim2.fromScale(0.5, 0.5),
+    BackgroundTransparency = 1,
+    BorderSizePixel        = 0,
+    ZIndex                  = 6,
+}, Footer)
+
+mk("UIListLayout", {
+    FillDirection       = Enum.FillDirection.Horizontal,
+    HorizontalAlignment = Enum.HorizontalAlignment.Center,
+    VerticalAlignment   = Enum.VerticalAlignment.Center,
+    Padding             = UDim.new(0, 8),
+    SortOrder            = Enum.SortOrder.LayoutOrder,
+    Parent               = FooterButtons,
+})
+
 local DiscBtn = mk("TextButton", {
-    Size             = UDim2.new(1, -24, 0, isMobile and 36 or 40),
-    AnchorPoint      = Vector2.new(0.5, 0.5),
-    Position         = UDim2.fromScale(0.5, 0.5),
+    Size             = UDim2.new(0.5, -4, 1, 0),
     BackgroundColor3 = C.Discord,
-    Text             = T("Copiar enlace de Discord", "Copy Discord invite link"),
+    Text             = T("Copiar Discord", "Copy Discord"),
     TextColor3       = Color3.fromRGB(255, 255, 255),
-    TextSize         = isMobile and 12 or 13,
+    TextSize         = isMobile and 10 or 12,
     Font             = Enum.Font.GothamBold,
     BorderSizePixel  = 0,
-    ZIndex           = 6,
-}, Footer)
-corner(DiscBtn, 10)
+    ZIndex           = 7,
+    LayoutOrder      = 1,
+}, FooterButtons)
+corner(DiscBtn, 9)
+
+local YouTubeBtn = mk("TextButton", {
+    Size             = UDim2.new(0.5, -4, 1, 0),
+    BackgroundColor3 = Color3.fromRGB(210, 35, 35),
+    Text             = T("Copiar YouTube", "Copy YouTube"),
+    TextColor3       = Color3.fromRGB(255, 255, 255),
+    TextSize         = isMobile and 10 or 12,
+    Font             = Enum.Font.GothamBold,
+    BorderSizePixel  = 0,
+    ZIndex           = 7,
+    LayoutOrder      = 2,
+}, FooterButtons)
+corner(YouTubeBtn, 9)
 
 DiscBtn.MouseButton1Click:Connect(function()
     local original = DiscBtn.Text
@@ -276,6 +307,19 @@ DiscBtn.MouseButton1Click:Connect(function()
         if DiscBtn and DiscBtn.Parent then
             DiscBtn.Text             = original
             DiscBtn.BackgroundColor3 = C.Discord
+        end
+    end)
+end)
+
+YouTubeBtn.MouseButton1Click:Connect(function()
+    local original = YouTubeBtn.Text
+    pcall(setclipboard, YOUTUBE_LINK)
+    YouTubeBtn.Text             = T("Enlace copiado", "Link copied")
+    YouTubeBtn.BackgroundColor3 = C.Green
+    task.delay(2.5, function()
+        if YouTubeBtn and YouTubeBtn.Parent then
+            YouTubeBtn.Text             = original
+            YouTubeBtn.BackgroundColor3 = Color3.fromRGB(210, 35, 35)
         end
     end)
 end)
