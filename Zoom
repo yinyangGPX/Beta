@@ -1,2 +1,595 @@
-Hello friends, I have to inform you about the kind of person the creator of Rise is. At first, the guy came to our channel giving false information and accusing us of something we didn't do — he said we had done such-and-such thing, and before even asking, the first thing he did was deobfuscate our script and send a screenshot of what he'd done, saying "I got it." The guy claimed we had caused that message he got when he used the script. I then explained everything to him properly and asked him to send me a video showing that when he put the script in his executor, that message actually appeared. But the guy only replied "it doesn't matter, let's just drop it," and I insisted again that he send a video showing that thing we supposedly did, and he kept saying it didn't matter and that we should forget it and be friends. He literally made us have a horrible day without apologizing for what he did, blaming us for something we didn't do.
-Recently, one of the members sent me a screenshot of the new logo they had on their script in a video they uploaded — the guy literally stole our logo for his script, and he didn't even pretend otherwise, he didn't even know what to say at that point, and he was threatening us. If you're a member of Rise, know that you're not in a good place. The creator of Rise only seeks to humiliate and steal things that don't belong to him from other people
+--// ════════════════════════════════════════════════════════════════
+--// YIN YANG — COMUNICADO OFICIAL v1.0
+--// Script standalone. No requiere la librería principal.
+--// Sistema de idioma automático | Responsive móvil & PC
+--// Imágenes desde GitHub vía getcustomasset (mismo sistema del banner YY)
+--// ════════════════════════════════════════════════════════════════
+
+-- ── SERVICIOS ─────────────────────────────────────────────────────
+local Players             = game:GetService("Players")
+local LocalizationService = game:GetService("LocalizationService")
+local UserInputService    = game:GetService("UserInputService")
+local TweenService        = game:GetService("TweenService")
+local LocalPlayer         = Players.LocalPlayer
+local PlayerGui           = LocalPlayer:WaitForChild("PlayerGui")
+local Camera              = workspace.CurrentCamera
+
+-- ── IDIOMA AUTOMÁTICO ─────────────────────────────────────────────
+-- Mismo sistema que usa la librería principal de Yin Yang
+local lang = "en"
+pcall(function()
+    local sys = LocalizationService.SystemLocaleId or ""
+    lang = string.lower(tostring(sys)):match("^(%a+)") or "en"
+end)
+task.spawn(function()
+    local ok, t = pcall(function()
+        return LocalizationService:GetTranslatorForPlayerAsync(LocalPlayer)
+    end)
+    if ok and t then
+        lang = string.lower(tostring(t.LocaleId)):match("^(%a+)") or "en"
+    end
+end)
+
+local function T(es, en)
+    return lang == "es" and es or en
+end
+
+-- ── PLATAFORMA Y TAMAÑOS ──────────────────────────────────────────
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+local vp = Camera.ViewportSize
+local W  = isMobile and math.min(vp.X * 0.96, 440) or math.min(vp.X * 0.72, 580)
+local H  = isMobile and math.min(vp.Y * 0.90, 720) or math.min(vp.Y * 0.86, 720)
+local FS = isMobile and 11 or 13
+
+-- ── PALETA DE COLORES ─────────────────────────────────────────────
+local C = {
+    BG       = Color3.fromRGB(13,  13,  18 ),
+    Header   = Color3.fromRGB(20,  20,  28 ),
+    Footer   = Color3.fromRGB(20,  20,  28 ),
+    Accent   = Color3.fromRGB(210, 45,  45 ),
+    Gold     = Color3.fromRGB(255, 200, 55 ),
+    Text     = Color3.fromRGB(235, 235, 240),
+    Muted    = Color3.fromRGB(140, 140, 165),
+    Stroke   = Color3.fromRGB(0,   0,   0  ),
+    Discord  = Color3.fromRGB(88,  101, 242),
+    Green    = Color3.fromRGB(50,  200, 90 ),
+    AlertBG  = Color3.fromRGB(60,  10,  10 ),
+    ImgBG    = Color3.fromRGB(10,  10,  15 ),
+}
+
+-- ── DATOS DEL COMUNICADO ──────────────────────────────────────────
+local DISCORD_LINK = "https://discord.gg/57Pybzyh8"
+
+-- IMPORTANTE: URLs convertidas a raw.githubusercontent.com
+-- (github.com/blob/... no funciona como imagen directa — igual que
+--  en el sistema de banners de la librería principal de Yin Yang)
+local RAW = "https://raw.githubusercontent.com/hinaanatsumi31-maker/Xd/main/"
+local IMAGES = {
+    { name="yy_ev01.png",   url=RAW.."Screenshot_20260927-180753.png", lES="Evidencia 1",   lEN="Evidence 1"   },
+    { name="yy_ev02.png",   url=RAW.."Screenshot_20260927-180801.png", lES="Evidencia 2",   lEN="Evidence 2"   },
+    { name="yy_ev03.png",   url=RAW.."Screenshot_20260927-180806.png", lES="Evidencia 3",   lEN="Evidence 3"   },
+    { name="yy_ev04.png",   url=RAW.."Screenshot_20260927-180810.png", lES="Evidencia 4",   lEN="Evidence 4"   },
+    { name="yy_ev05.png",   url=RAW.."Screenshot_20260927-180814.png", lES="Evidencia 5",   lEN="Evidence 5"   },
+    { name="yy_ev06.png",   url=RAW.."Screenshot_20260927-180817.png", lES="Evidencia 6",   lEN="Evidence 6"   },
+    { name="yy_ev07.png",   url=RAW.."Screenshot_20260927-180820.png", lES="Evidencia 7",   lEN="Evidence 7"   },
+    { name="yy_ev08.png",   url=RAW.."Screenshot_20260927-181015.png", lES="Evidencia 8",   lEN="Evidence 8"   },
+    { name="yy_ev09.png",   url=RAW.."Screenshot_20260927-181020.png", lES="Evidencia 9",   lEN="Evidence 9"   },
+    { name="yy_ev10.png",   url=RAW.."Screenshot_20260927-181025.png", lES="Evidencia 10",  lEN="Evidence 10"  },
+    { name="yy_ev11.png",   url=RAW.."Screenshot_20260927-181029.png", lES="Evidencia 11",  lEN="Evidence 11"  },
+    { name="yy_ev12.png",   url=RAW.."Screenshot_20260927-181035.png", lES="Evidencia 12",  lEN="Evidence 12"  },
+    { name="yy_logo.png",   url=RAW.."Screenshot_20260927-143216.png", lES="Logo copiado",  lEN="Copied logo"  },
+}
+
+local MSG_ES = [[Hola a todos, debo informarles sobre el tipo de persona que es el creador de Rise.
+
+Al principio, el tipo llegó a nuestro canal dando información falsa y acusándonos de algo que no hicimos. Sin siquiera preguntar primero, desofuscó nuestro script, tomó una captura y la envió diciendo "lo conseguí". Afirmaba que nosotros habíamos causado el mensaje que le apareció al usar el script. Le expliqué todo correctamente y le pedí que me mandara un video demostrando que ese mensaje aparecía. Solo respondió "no importa, dejémoslo pasar", y yo insistí en que mandara el video, y él seguía diciendo que no importaba y que deberíamos olvidarlo y ser amigos. Nos arruinó el día sin disculparse por lo que hizo, culpándonos de algo que no hicimos.
+
+Recientemente, uno de los miembros me mandó capturas del nuevo logo que tenían en su script en un video que subieron. El tipo literalmente robó nuestro logo para su script. No supo qué decir en ese momento y nos estaba amenazando. Además de todo eso, desofuscó nuestro script nuevamente, lo extrajo de nuestro backend y lo publicó en su servidor de Discord con más de 8.000 usuarios.
+
+Si eres miembro de Rise, sabe que no estás en un buen lugar. El creador de Rise solo busca humillar y robar cosas que no le pertenecen a otras personas.
+
+— Equipo Yin Yang]]
+
+local MSG_EN = [[Hello friends, I must inform you about the kind of person the creator of Rise is.
+
+At first, the guy came to our channel spreading false information and accusing us of something we didn't do. Without even asking first, he deobfuscated our script, took a screenshot and sent it saying "I got it." He claimed we had caused the message that appeared when he used the script. I explained everything properly and asked him to send a video proving it. He only replied "it doesn't matter, let's drop it," and I kept insisting he send the video, but he kept saying it didn't matter and that we should forget it and be friends. He literally ruined our day without apologizing, blaming us for something we didn't do.
+
+Recently, one of our members sent me a screenshot of the new logo they had on their script in an uploaded video. The guy literally stole our logo for his script. He had nothing to say at that point and was threatening us. On top of all that, he deobfuscated our script again, extracted it from our backend, and published it in his Discord server with over 8,000 users.
+
+If you're a member of Rise, know that you're not in a good place. The creator of Rise only seeks to humiliate and steal things that don't belong to him.
+
+— Yin Yang Team]]
+
+-- ── HELPERS ────────────────────────────────────────────────────────
+local function mk(class, props, parent)
+    local obj = Instance.new(class)
+    for k, v in pairs(props or {}) do obj[k] = v end
+    if parent then obj.Parent = parent end
+    return obj
+end
+
+local function corner(obj, r)
+    mk("UICorner", { CornerRadius = UDim.new(0, r or 8) }, obj)
+end
+
+local function addStroke(obj, color, thickness)
+    mk("UIStroke", {
+        Color              = color or C.Stroke,
+        Thickness          = thickness or 1,
+        ApplyStrokeMode    = Enum.ApplyStrokeMode.Border,
+    }, obj)
+end
+
+-- ── LIMPIAR INSTANCIA ANTERIOR ────────────────────────────────────
+pcall(function()
+    local ex = PlayerGui:FindFirstChild("YYComunicado")
+    if ex then ex:Destroy() end
+end)
+
+-- ── SCREEN GUI ─────────────────────────────────────────────────────
+local SG = mk("ScreenGui", {
+    Name              = "YYComunicado",
+    ResetOnSpawn      = false,
+    IgnoreGuiInset    = true,
+    ZIndexBehavior    = Enum.ZIndexBehavior.Sibling,
+}, PlayerGui)
+
+-- Fondo semi-opaco
+mk("Frame", {
+    Size                    = UDim2.fromScale(1, 1),
+    BackgroundColor3        = Color3.fromRGB(0, 0, 0),
+    BackgroundTransparency  = 0.42,
+    ZIndex                  = 1,
+}, SG)
+
+-- ── VENTANA PRINCIPAL ──────────────────────────────────────────────
+local Main = mk("Frame", {
+    AnchorPoint         = Vector2.new(0.5, 0.5),
+    Position            = UDim2.new(0.5, 0, 0.58, 0),   -- empieza un poco más abajo
+    Size                = UDim2.new(0, W, 0, H),
+    BackgroundColor3    = C.BG,
+    BorderSizePixel     = 0,
+    ClipsDescendants    = true,   -- las esquinas redondeadas clips header/footer también
+    ZIndex              = 2,
+}, SG)
+corner(Main, 14)
+addStroke(Main, C.Accent, 1.5)
+
+-- Animación de entrada (slide-up con Back easing)
+TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Position = UDim2.fromScale(0.5, 0.5),
+}):Play()
+
+-- ── HEADER ─────────────────────────────────────────────────────────
+local hdrH = isMobile and 72 or 84
+local Header = mk("Frame", {
+    Size             = UDim2.new(1, 0, 0, hdrH),
+    BackgroundColor3 = C.Header,
+    BorderSizePixel  = 0,
+    ZIndex           = 5,
+}, Main)
+
+-- Identificador
+mk("TextLabel", {
+    Size                = UDim2.new(0, 48, 1, 0),
+    Position            = UDim2.new(0, 10, 0, 0),
+    BackgroundTransparency = 1,
+    Text                = "YY",
+    TextColor3          = C.Gold,
+    TextSize            = isMobile and 28 or 32,
+    Font                = Enum.Font.GothamBold,
+    ZIndex              = 6,
+}, Header)
+
+-- Título
+mk("TextLabel", {
+    Size               = UDim2.new(1, -106, 0, isMobile and 30 or 36),
+    Position           = UDim2.new(0, 62, 0, isMobile and 9 or 11),
+    BackgroundTransparency = 1,
+    Text               = T("Yin Yang — Comunicado Oficial", "Yin Yang — Official Statement"),
+    TextColor3         = C.Gold,
+    TextSize           = isMobile and 13 or 15,
+    Font               = Enum.Font.GothamBlack,
+    TextXAlignment     = Enum.TextXAlignment.Left,
+    TextWrapped        = true,
+    ZIndex             = 6,
+}, Header)
+
+-- Subtítulo
+mk("TextLabel", {
+    Size               = UDim2.new(1, -106, 0, isMobile and 18 or 22),
+    Position           = UDim2.new(0, 62, 0, isMobile and 44 or 52),
+    BackgroundTransparency = 1,
+    Text               = T("Servicio suspendido temporalmente", "Service temporarily suspended"),
+    TextColor3         = C.Muted,
+    TextSize           = isMobile and 9 or 10,
+    Font               = Enum.Font.Gotham,
+    TextXAlignment     = Enum.TextXAlignment.Left,
+    ZIndex             = 6,
+}, Header)
+
+-- Botón cerrar
+local CloseBtn = mk("TextButton", {
+    Size             = UDim2.new(0, 30, 0, 30),
+    AnchorPoint      = Vector2.new(1, 0.5),
+    Position         = UDim2.new(1, -10, 0.5, 0),
+    BackgroundColor3 = C.Accent,
+    Text             = "×",
+    TextColor3       = Color3.fromRGB(255, 255, 255),
+    TextSize         = 13,
+    Font             = Enum.Font.GothamBold,
+    BorderSizePixel  = 0,
+    ZIndex           = 7,
+}, Header)
+corner(CloseBtn, 8)
+CloseBtn.MouseButton1Click:Connect(function() SG:Destroy() end)
+
+-- Línea separadora bajo el header
+mk("Frame", {
+    Size                   = UDim2.new(1, 0, 0, 1),
+    Position               = UDim2.new(0, 0, 1, -1),
+    BackgroundColor3       = C.Accent,
+    BackgroundTransparency = 0.55,
+    BorderSizePixel        = 0,
+    ZIndex                 = 6,
+}, Header)
+
+-- ── FOOTER ─────────────────────────────────────────────────────────
+local ftrH  = isMobile and 54 or 60
+local Footer = mk("Frame", {
+    Size             = UDim2.new(1, 0, 0, ftrH),
+    AnchorPoint      = Vector2.new(0, 1),
+    Position         = UDim2.fromScale(0, 1),
+    BackgroundColor3 = C.Footer,
+    BorderSizePixel  = 0,
+    ZIndex           = 5,
+}, Main)
+
+-- Línea separadora sobre el footer
+mk("Frame", {
+    Size             = UDim2.new(1, 0, 0, 1),
+    BackgroundColor3 = C.Stroke,
+    BorderSizePixel  = 0,
+    ZIndex           = 6,
+}, Footer)
+
+local DiscBtn = mk("TextButton", {
+    Size             = UDim2.new(1, -24, 0, isMobile and 36 or 40),
+    AnchorPoint      = Vector2.new(0.5, 0.5),
+    Position         = UDim2.fromScale(0.5, 0.5),
+    BackgroundColor3 = C.Discord,
+    Text             = T("Copiar enlace de Discord", "Copy Discord invite link"),
+    TextColor3       = Color3.fromRGB(255, 255, 255),
+    TextSize         = isMobile and 12 or 13,
+    Font             = Enum.Font.GothamBold,
+    BorderSizePixel  = 0,
+    ZIndex           = 6,
+}, Footer)
+corner(DiscBtn, 10)
+
+DiscBtn.MouseButton1Click:Connect(function()
+    local original = DiscBtn.Text
+    pcall(setclipboard, DISCORD_LINK)
+    DiscBtn.Text             = T("Enlace copiado", "Link copied")
+    DiscBtn.BackgroundColor3 = C.Green
+    task.delay(2.5, function()
+        if DiscBtn and DiscBtn.Parent then
+            DiscBtn.Text             = original
+            DiscBtn.BackgroundColor3 = C.Discord
+        end
+    end)
+end)
+
+-- ── SCROLL CENTRAL ─────────────────────────────────────────────────
+local Scroll = mk("ScrollingFrame", {
+    Size                 = UDim2.new(1, 0, 1, -(hdrH + ftrH)),
+    Position             = UDim2.new(0, 0, 0, hdrH),
+    BackgroundTransparency = 1,
+    ScrollBarThickness   = 0,
+    ScrollBarImageColor3 = C.Accent,
+    ScrollBarImageTransparency = 1,
+    CanvasSize           = UDim2.new(0, 0, 0, 0),
+    AutomaticCanvasSize  = Enum.AutomaticSize.Y,
+    ScrollingDirection   = Enum.ScrollingDirection.Y,
+    ScrollingEnabled     = true,
+    ElasticBehavior      = Enum.ElasticBehavior.Always,
+    BorderSizePixel      = 0,
+    ZIndex               = 3,
+}, Main)
+
+local Content = mk("Frame", {
+    Size              = UDim2.new(1, 0, 0, 0),
+    AutomaticSize     = Enum.AutomaticSize.Y,
+    BackgroundTransparency = 1,
+    ZIndex            = 3,
+}, Scroll)
+
+mk("UIListLayout", {
+    SortOrder   = Enum.SortOrder.LayoutOrder,
+    Padding     = UDim.new(0, 8),
+    Parent      = Content,
+})
+mk("UIPadding", {
+    PaddingLeft   = UDim.new(0, 12),
+    PaddingRight  = UDim.new(0, 12),
+    PaddingTop    = UDim.new(0, 12),
+    PaddingBottom = UDim.new(0, 14),
+    Parent        = Content,
+})
+
+local lo = 0
+local function LO() lo = lo + 1; return lo end
+
+local function divider()
+    mk("Frame", {
+        Size                   = UDim2.new(1, 0, 0, 1),
+        BackgroundColor3       = C.Stroke,
+        BackgroundTransparency = 0.3,
+        BorderSizePixel        = 0,
+        ZIndex                 = 4,
+        LayoutOrder            = LO(),
+    }, Content)
+end
+
+-- ── 1. BANNER DE ALERTA ────────────────────────────────────────────
+local Banner = mk("Frame", {
+    Size             = UDim2.new(1, 0, 0, isMobile and 66 or 74),
+    BackgroundColor3 = C.AlertBG,
+    BorderSizePixel  = 0,
+    ZIndex           = 4,
+    LayoutOrder      = LO(),
+}, Content)
+corner(Banner, 10)
+addStroke(Banner, C.Accent, 1.5)
+mk("UIPadding", {
+    PaddingLeft=UDim.new(0,10), PaddingRight=UDim.new(0,10),
+    PaddingTop=UDim.new(0,8),   PaddingBottom=UDim.new(0,8),
+    Parent = Banner,
+})
+mk("TextLabel", {
+    Size                   = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 1,
+    Text = T(
+        "Yin Yang estará cerrado por 1 semana completa a causa del creador de Rise. Lo lamentamos. Toda la evidencia está más abajo.",
+        "Yin Yang will be closed for 1 full week due to the creator of Rise. We're sorry. All evidence is shown below."
+    ),
+    TextColor3     = Color3.fromRGB(255, 170, 170),
+    TextSize       = isMobile and 11 or 12,
+    Font           = Enum.Font.GothamBold,
+    TextWrapped    = true,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    ZIndex         = 5,
+}, Banner)
+
+divider()
+
+-- ── 2. MENSAJE PRINCIPAL ───────────────────────────────────────────
+mk("TextLabel", {
+    Size              = UDim2.new(1, 0, 0, 0),
+    AutomaticSize     = Enum.AutomaticSize.Y,
+    BackgroundTransparency = 1,
+    Text              = T(MSG_ES, MSG_EN),
+    TextColor3        = C.Text,
+    TextSize          = FS,
+    Font              = Enum.Font.GothamMedium,
+    TextWrapped       = true,
+    TextXAlignment    = Enum.TextXAlignment.Left,
+    LineHeight        = 1.45,
+    ZIndex            = 4,
+    LayoutOrder       = LO(),
+}, Content)
+
+divider()
+
+-- ── 3. TÍTULO EVIDENCIA ────────────────────────────────────────────
+mk("TextLabel", {
+    Size                   = UDim2.new(1, 0, 0, 28),
+    BackgroundTransparency = 1,
+    Text                   = T("Evidencia completa", "Full Evidence"),
+    TextColor3             = C.Gold,
+    TextSize               = isMobile and 13 or 14,
+    Font                   = Enum.Font.GothamBlack,
+    TextXAlignment         = Enum.TextXAlignment.Left,
+    ZIndex                 = 4,
+    LayoutOrder            = LO(),
+}, Content)
+
+-- ── 4. FEED DE EVIDENCIAS ───────────────────────────────────────────
+-- Feed vertical de una sola columna, pensado para desplazamiento tipo Instagram.
+-- Cada captura ocupa una tarjeta grande y mantiene la proporción del contenido.
+local feedW        = W - 24
+local imageAspect  = 0.45
+local imageH       = math.floor(feedW / imageAspect)
+local captionH     = 42
+local cardH        = imageH + captionH
+
+local ImgFeed = mk("Frame", {
+    Size             = UDim2.new(1, 0, 0, #IMAGES * cardH + (#IMAGES - 1) * 14),
+    BackgroundTransparency = 1,
+    ZIndex           = 4,
+    LayoutOrder      = LO(),
+}, Content)
+
+mk("UIListLayout", {
+    SortOrder = Enum.SortOrder.LayoutOrder,
+    Padding   = UDim.new(0, 14),
+    Parent    = ImgFeed,
+})
+
+local imgEntries = {}
+
+for i, img in ipairs(IMAGES) do
+    local Card = mk("Frame", {
+        Size                   = UDim2.new(1, 0, 0, cardH),
+        BackgroundColor3       = C.ImgBG,
+        BackgroundTransparency = 0.08,
+        BorderSizePixel        = 0,
+        ZIndex                 = 5,
+        LayoutOrder            = i,
+    }, ImgFeed)
+    corner(Card, 12)
+    addStroke(Card, C.Stroke, 1)
+
+    mk("UIGradient", {
+        Rotation = 90,
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(24, 24, 31)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 14)),
+        }),
+        Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.05),
+            NumberSequenceKeypoint.new(1, 0.18),
+        }),
+    }, Card)
+
+    -- Línea de identidad visual de cada publicación.
+    mk("Frame", {
+        Size             = UDim2.new(1, -24, 0, 2),
+        Position         = UDim2.new(0, 12, 0, 10),
+        BackgroundColor3 = C.Accent,
+        BackgroundTransparency = 0.15,
+        BorderSizePixel  = 0,
+        ZIndex            = 7,
+    }, Card)
+
+    local Number = mk("TextLabel", {
+        Size                   = UDim2.new(0, 30, 0, 22),
+        Position               = UDim2.new(0, 12, 0, 18),
+        BackgroundColor3       = Color3.fromRGB(0, 0, 0),
+        BackgroundTransparency = 0.18,
+        Text                   = string.format("%02d", i),
+        TextColor3             = C.Text,
+        TextSize               = 10,
+        Font                   = Enum.Font.GothamBlack,
+        TextXAlignment         = Enum.TextXAlignment.Center,
+        TextYAlignment         = Enum.TextYAlignment.Center,
+        BorderSizePixel        = 0,
+        ZIndex                 = 8,
+    }, Card)
+    corner(Number, 6)
+
+    -- Imagen grande. Fit conserva toda la captura sin recortarla.
+    local IL = mk("ImageLabel", {
+        Size                   = UDim2.new(1, -16, 0, imageH - 16),
+        Position               = UDim2.new(0, 8, 0, 8),
+        BackgroundColor3       = Color3.fromRGB(7, 7, 10),
+        BackgroundTransparency = 0,
+        Image                  = "",
+        ImageTransparency      = 1,
+        ScaleType              = Enum.ScaleType.Fit,
+        ZIndex                  = 6,
+    }, Card)
+    corner(IL, 8)
+
+    local LoadIcon = mk("TextLabel", {
+        Size                   = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        Text                   = T("Cargando", "Loading"),
+        TextColor3             = C.Muted,
+        TextSize               = 11,
+        Font                   = Enum.Font.GothamBold,
+        TextXAlignment         = Enum.TextXAlignment.Center,
+        TextYAlignment         = Enum.TextYAlignment.Center,
+        ZIndex                  = 7,
+    }, IL)
+
+    local Label = mk("TextLabel", {
+        Size                   = UDim2.new(1, -58, 0, captionH),
+        Position               = UDim2.new(0, 50, 1, -captionH),
+        BackgroundTransparency = 1,
+        Text                   = T(img.lES, img.lEN),
+        TextColor3             = C.Text,
+        TextSize               = isMobile and 12 or 13,
+        Font                   = Enum.Font.GothamBlack,
+        TextXAlignment         = Enum.TextXAlignment.Left,
+        TextYAlignment         = Enum.TextYAlignment.Center,
+        ZIndex                 = 6,
+    }, Card)
+
+    imgEntries[i] = { il = IL, icon = LoadIcon, data = img }
+end
+
+divider()
+
+-- ── 5. NOTA FINAL ──────────────────────────────────────────────────
+mk("TextLabel", {
+    Size                   = UDim2.new(1, 0, 0, 0),
+    AutomaticSize          = Enum.AutomaticSize.Y,
+    BackgroundTransparency = 1,
+    Text = T(
+        "Únete a nuestro Discord para estar al tanto cuando el script vuelva.",
+        "Join our Discord to know when the script is back."
+    ),
+    TextColor3     = C.Muted,
+    TextSize       = FS,
+    Font           = Enum.Font.GothamMedium,
+    TextWrapped    = true,
+    TextXAlignment = Enum.TextXAlignment.Center,
+    ZIndex         = 4,
+    LayoutOrder    = LO(),
+}, Content)
+
+-- ── CARGA ASÍNCRONA DE IMÁGENES ────────────────────────────────────
+-- Mismo sistema que el BannerSlideshow de la librería principal:
+-- game:HttpGet  →  writefile (caché en disco)  →  getcustomasset
+task.spawn(function()
+    local supported = type(game.HttpGet)    == "function"
+                  and type(writefile)       == "function"
+                  and type(isfile)          == "function"
+                  and type(getcustomasset)  == "function"
+
+    if not supported then
+        for _, e in ipairs(imgEntries) do
+            pcall(function()
+                if e.icon and e.icon.Parent then
+                    e.icon.Text = T("Sin soporte", "No support")
+                end
+            end)
+        end
+        return
+    end
+
+    for _, e in ipairs(imgEntries) do
+        pcall(function()
+            local name = e.data.name
+            local url  = e.data.url
+
+            -- Caché en disco: si ya existe, saltar descarga.
+            local cachedOk, exists = pcall(isfile, name)
+            if not (cachedOk and exists) then
+                local dlOk, data = pcall(game.HttpGet, game, url, true)
+                if not dlOk or type(data) ~= "string" or #data < 100 then
+                    if e.icon and e.icon.Parent then
+                        e.icon.Text = T("Error de carga", "Load error")
+                    end
+                    return
+                end
+                local writeOk = pcall(writefile, name, data)
+                if not writeOk then
+                    if e.icon and e.icon.Parent then
+                        e.icon.Text = T("Error de caché", "Cache error")
+                    end
+                    return
+                end
+            end
+
+            -- Convertir a asset compatible con Roblox.
+            local aOk, aid = pcall(getcustomasset, name)
+            if aOk and type(aid) == "string" and aid ~= "" then
+                if e.il and e.il.Parent then
+                    e.il.Image = aid
+                    e.il.ImageTransparency = 0
+                    pcall(function() e.icon:Destroy() end)
+                end
+            else
+                if e.icon and e.icon.Parent then
+                    e.icon.Text = T("Error de carga", "Load error")
+                end
+            end
+        end)
+    end
+end)
+
+--// ════════════════════════════════════════════════════════════════
+--// FIN DEL COMUNICADO
+--// ════════════════════════════════════════════════════════════════
