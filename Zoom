@@ -4731,6 +4731,265 @@ print("CONFIGURATION: Initialized")
 --// TAB: AVATAR — Cambio visual local, limpio y permanente
 --// ═════════════════════════════════════════════════════════════════════════════
 
+do
+    --// Lógica tomada de AvatarChanger_Standalone.lua (Avatar Change de mo_hook_por_ronda_FIXED.lua).
+    --// Flujo: Workspace.Rigs/<LocalPlayer.Name> -> Humanoid R6 -> username -> UserId
+    --//        -> HumanoidDescription -> ApplyDescriptionReset.
+    --// Va dentro de do...end para no gastar locals de la raíz del script.
+    local TabAvatar = Zero:CreateTab("Avatar", "eye")
+
+    --// El standalone mostraba el estado en un label; esta UI no tiene label,
+    --// así que va por consola y, en "Aplicar Skin", también en el texto del botón.
+    local function avatarStatus(text)
+        print("[Avatar] " .. text)
+    end
+
+    local AvatarInput, ApplyButton
+
+    local function flashApply(text)
+        ApplyButton.Text = text
+        task.delay(2, function()
+            if ApplyButton.Parent and ApplyButton.Text == text then
+                ApplyButton.Text = "Aplicar Skin"
+            end
+        end)
+    end
+
+    -- Misma búsqueda utilizada por el script original.
+    local function GetAvatarVisualHumanoid()
+        local rigsFolder = workspace:FindFirstChild("Rigs")
+        local visualRig = rigsFolder and rigsFolder:FindFirstChild(LocalPlayer.Name)
+        local humanoid = visualRig and visualRig:FindFirstChildOfClass("Humanoid")
+
+        return visualRig, humanoid
+    end
+
+    -- ============================================================
+    -- KORBLOX / HEADLESS
+    -- Basado directamente en CustomBodyParts + ApplyCustomBodyPart
+    -- del Avatar Change original.
+    -- ============================================================
+
+    local CustomBodyParts = {
+        Korblox = {
+            Name = "Korblox",
+            Property = "RightLeg",
+            AssetId = 139607718,
+        },
+        Headless = {
+            Name = "Cabeza invisible",
+            Property = "Head",
+            AssetId = 15093053680,
+        },
+    }
+
+    local CustomBodyPartState = {
+        Saved = {},
+        HeadlessFallback = {
+            Active = false,
+            HeadTransparency = nil,
+            FaceTransparency = nil,
+        },
+    }
+
+    local function SetHeadlessFallback(visualRig, enabled)
+        local head = visualRig and visualRig:FindFirstChild("Head")
+        if not head or not head:IsA("BasePart") then
+            return false
+        end
+
+        local face = head:FindFirstChild("face")
+
+        if enabled then
+            if not CustomBodyPartState.HeadlessFallback.Active then
+                CustomBodyPartState.HeadlessFallback.HeadTransparency =
+                    head.LocalTransparencyModifier
+                CustomBodyPartState.HeadlessFallback.FaceTransparency =
+                    face and face:IsA("Decal") and face.Transparency or nil
+            end
+
+            head.LocalTransparencyModifier = 1
+
+            if face and face:IsA("Decal") then
+                face.Transparency = 1
+            end
+
+            CustomBodyPartState.HeadlessFallback.Active = true
+        else
+            head.LocalTransparencyModifier =
+                CustomBodyPartState.HeadlessFallback.HeadTransparency or 0
+
+            if face and face:IsA("Decal")
+                and CustomBodyPartState.HeadlessFallback.FaceTransparency ~= nil then
+                face.Transparency =
+                    CustomBodyPartState.HeadlessFallback.FaceTransparency
+            end
+
+            CustomBodyPartState.HeadlessFallback = {
+                Active = false,
+                HeadTransparency = nil,
+                FaceTransparency = nil,
+            }
+        end
+
+        return true
+    end
+
+    local function ApplyCustomBodyPart(partInfo, enabled)
+        local visualRig, visualHumanoid = GetAvatarVisualHumanoid()
+
+        if not visualRig or not visualHumanoid then
+            avatarStatus("No se encontró el rig visual R6.")
+            return false
+        end
+
+        if visualHumanoid.RigType ~= Enum.HumanoidRigType.R6 then
+            avatarStatus("La pieza requiere un rig visual R6.")
+            return false
+        end
+
+        local okDescription, descriptionOrError = pcall(function()
+            return visualHumanoid:GetAppliedDescription()
+        end)
+
+        if not okDescription or not descriptionOrError then
+            avatarStatus("No se pudo leer el avatar actual.")
+            warn("[Avatar] GetAppliedDescription error:", descriptionOrError)
+            return false
+        end
+
+        if enabled then
+            if CustomBodyPartState.Saved[partInfo.Property] == nil then
+                CustomBodyPartState.Saved[partInfo.Property] =
+                    descriptionOrError[partInfo.Property]
+            end
+
+            descriptionOrError[partInfo.Property] = partInfo.AssetId
+            avatarStatus("Aplicando " .. partInfo.Name .. "...")
+        else
+            descriptionOrError[partInfo.Property] =
+                CustomBodyPartState.Saved[partInfo.Property] or 0
+
+            CustomBodyPartState.Saved[partInfo.Property] = nil
+
+            if partInfo.Property == "Head"
+                and CustomBodyPartState.HeadlessFallback.Active then
+                SetHeadlessFallback(visualRig, false)
+            end
+        end
+
+        local okApply, applyError = pcall(function()
+            visualHumanoid:ApplyDescriptionReset(descriptionOrError)
+        end)
+
+        if not okApply then
+            if enabled and partInfo.Property == "Head"
+                and SetHeadlessFallback(visualRig, true) then
+                avatarStatus("Cabeza invisible aplicada localmente.")
+                warn("[Avatar] Headless Dynamic Head fallback used:", applyError)
+                return true
+            end
+
+            avatarStatus("No se pudo aplicar la pieza.")
+            warn("[Avatar] ApplyDescriptionReset error:", applyError)
+            return false
+        end
+
+        avatarStatus(enabled and (partInfo.Name .. " aplicado.") or (partInfo.Name .. " restaurado."))
+
+        return true
+    end
+
+    local function ApplyAvatarByUsername()
+        local username = tostring(AvatarInput.Get() or ""):match("^%s*(.-)%s*$")
+
+        if username == "" then
+            avatarStatus("Escribe un nombre de usuario.")
+            flashApply("Escribe un usuario")
+            return
+        end
+
+        local visualRig, visualHumanoid = GetAvatarVisualHumanoid()
+
+        if not visualRig or not visualHumanoid then
+            avatarStatus("No se encontró el rig visual R6.")
+            flashApply("Rig R6 no encontrado")
+            return
+        end
+
+        if visualHumanoid.RigType ~= Enum.HumanoidRigType.R6 then
+            avatarStatus("El rig visual no es R6.")
+            flashApply("El rig no es R6")
+            return
+        end
+
+        avatarStatus("Cargando avatar de " .. username .. "...")
+        ApplyButton.Text = "Cargando..."
+
+        -- Misma resolución de username -> UserId.
+        local okUser, userIdOrError = pcall(function()
+            return Players:GetUserIdFromNameAsync(username)
+        end)
+
+        if not okUser then
+            avatarStatus("No se encontró ese usuario.")
+            flashApply("Usuario no encontrado")
+            return
+        end
+
+        -- Misma obtención de HumanoidDescription.
+        local okDescription, descriptionOrError = pcall(function()
+            return Players:GetHumanoidDescriptionFromUserId(userIdOrError)
+        end)
+
+        if not okDescription then
+            avatarStatus("No se pudo cargar el avatar.")
+            flashApply("Error al cargar avatar")
+            return
+        end
+
+        -- Misma aplicación del script original:
+        -- ApplyDescriptionReset evita acumular ropa/accesorios anteriores.
+        local okApply, applyError = pcall(function()
+            visualHumanoid:ApplyDescriptionReset(descriptionOrError)
+        end)
+
+        if not okApply then
+            avatarStatus("No se pudo aplicar el avatar.")
+            warn("[Avatar] ApplyDescriptionReset error:", applyError)
+            flashApply("Error al aplicar")
+            return
+        end
+
+        avatarStatus("Avatar de " .. username .. " aplicado.")
+        flashApply("Avatar aplicado")
+    end
+
+    -- ============================================================
+    -- ELEMENTOS DE LA PESTAÑA
+    -- ============================================================
+
+    AvatarInput = TabAvatar:CreateInput("Nombre de usuario", "Usuario de Roblox...", function() end)
+
+    ApplyButton = TabAvatar:CreateButton("Aplicar Skin", ApplyAvatarByUsername)
+
+    --// Si la pieza no se pudo aplicar, el switch vuelve a su estado anterior
+    --// (en el standalone el estado solo cambiaba si ApplyCustomBodyPart daba ok).
+    local KorbloxToggle
+    KorbloxToggle = TabAvatar:CreateFloatingToggle("Korblox", false, function(state)
+        if not ApplyCustomBodyPart(CustomBodyParts.Korblox, state) then
+            KorbloxToggle:Set(not state)
+        end
+    end)
+
+    local HeadlessToggle
+    HeadlessToggle = TabAvatar:CreateFloatingToggle("Cabeza invisible", false, function(state)
+        if not ApplyCustomBodyPart(CustomBodyParts.Headless, state) then
+            HeadlessToggle:Set(not state)
+        end
+    end)
+end
+
 --// ═════════════════════════════════════════════════════════════════════════════
 --// TAB: MOVEMENT
 --// ═════════════════════════════════════════════════════════════════════════════
