@@ -18,2197 +18,286 @@
     el historial completo de cambios previos.)
 --]]
 
---// INTRO: animación "Ejecutor Parque".
---// El resto del script se ejecuta recién cuando la animación termina.
+--// Al final de este bloque está el popup de Discord.
 do
-local function correrEjecutorParque()
---[[
-	Escena Parque / Banca  (v2)
-	- Animacion independiente de los cortes (corre siempre en RenderStepped)
-	- Soporta avatares R15 y R6
-	- Quita el Animator del modelo para que nada pise las poses
-	- Mas detalles: farolas, flores, arbustos, valla, banca con tablones,
-	  colinas, nubes, polvo al caminar, polvo de luz, profundidad de campo,
-	  barras de cine y una mirada alrededor antes del final
-]]
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
-
-if _G.SalirEscena then
-	pcall(_G.SalirEscena)
-end
-
-local USERID = 9549448191
-local TEXTO_FINAL = "Yin Yang, Returns on October 5"
-local SONIDO_ID = "93035214379043"
-local VOL_ARBOL = 0.6
-local VOL_ANIMACION = VOL_ARBOL * 0.65
-local DUR_ARBOL = 5
-local REVELAR_JUEGO_AL_FINAL = true
-local CIELO_ID = "4951222008"
-local SONIDO_LADRIDO_ID = "99723552215501"
-local MOSTRAR_GORRO = false
-local VISITANTE_ID = "11321772808"
-local VISITANTE_ESCALA = 1
-local VISITANTE_GIRO = 0
-local VISITANTE_APARECE = 7
-local MOSTRAR_NUBES = false
-local BARRAS_CINE = true
-local PROFUNDIDAD_CAMPO = true
-
-local CENTRO = Vector3.new(0, 20000, 0)
-local X_INICIO = -14
-local BX = 12
-local BZ = 4
-local Z_CAMINO = -0.5
-local ALTO_ASIENTO = 1.5
-local AJUSTE_ASIENTO = 0
-local BAJO_ASIENTO_RESPALDO = 1.4
-local VEL_CAMINAR = 3.2
-local HMAX = 0.45
-
-local jugador = Players.LocalPlayer
-local camara = Workspace.CurrentCamera
-local fovOriginal = camara.FieldOfView
-local activa = true
-local animConn = nil
-local T0 = os.clock()
-local ultimo = os.clock()
-
-local function P(x, y, z)
-	return CENTRO + Vector3.new(x, y, z)
-end
-
-----------------------------------------------------------------------
--- GUI
-----------------------------------------------------------------------
-local gui = Instance.new("ScreenGui")
-gui.Name = "EscenaParqueGui"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-pcall(function()
-	gui.ScreenInsets = Enum.ScreenInsets.None
-end)
-gui.Parent = jugador:WaitForChild("PlayerGui")
-
-local fundido = Instance.new("Frame")
-fundido.BackgroundColor3 = Color3.new(0, 0, 0)
-fundido.BackgroundTransparency = 0
-fundido.BorderSizePixel = 0
-fundido.Size = UDim2.fromScale(1, 1)
-fundido.ZIndex = 10
-fundido.Parent = gui
-
-local barraSup = Instance.new("Frame")
-barraSup.BackgroundColor3 = Color3.new(0, 0, 0)
-barraSup.BorderSizePixel = 0
-barraSup.Size = UDim2.new(1, 0, 0, 0)
-barraSup.ZIndex = 8
-barraSup.Parent = gui
-
-local barraInf = Instance.new("Frame")
-barraInf.AnchorPoint = Vector2.new(0, 1)
-barraInf.Position = UDim2.fromScale(0, 1)
-barraInf.BackgroundColor3 = Color3.new(0, 0, 0)
-barraInf.BorderSizePixel = 0
-barraInf.Size = UDim2.new(1, 0, 0, 0)
-barraInf.ZIndex = 8
-barraInf.Parent = gui
-
-local texto = Instance.new("TextLabel")
-texto.AnchorPoint = Vector2.new(0.5, 0.5)
-texto.Position = UDim2.fromScale(0.5, 0.83)
-texto.Size = UDim2.fromScale(0.8, 0.1)
-texto.BackgroundTransparency = 1
-texto.Font = Enum.Font.GothamBold
-texto.Text = TEXTO_FINAL
-texto.TextColor3 = Color3.new(1, 1, 1)
-texto.TextScaled = true
-texto.TextTransparency = 1
-texto.TextStrokeTransparency = 1
-texto.ZIndex = 5
-texto.Parent = gui
-
-local carpeta = Instance.new("Folder")
-carpeta.Name = "EscenaParque"
-carpeta.Parent = Workspace
-
-----------------------------------------------------------------------
--- OCULTAR LAS DEMAS GUIs MIENTRAS DURA LA ANIMACION
-----------------------------------------------------------------------
-local StarterGui = game:GetService("StarterGui")
-local guisOcultas = {}
-local conexionesGuis = {}
-local coreGuiPrevio = {}
-local guisRestauradas = false
-
-local function ocultarGui(g)
-	if g == gui or not g:IsA("ScreenGui") then
-		return
-	end
-	if guisOcultas[g] == nil then
-		guisOcultas[g] = g.Enabled
-		-- si el juego la vuelve a encender mientras corre la escena, se apaga otra vez
-		table.insert(conexionesGuis, g:GetPropertyChangedSignal("Enabled"):Connect(function()
-			if not guisRestauradas and g.Enabled then
-				g.Enabled = false
-			end
-		end))
-	end
-	g.Enabled = false
-end
-
-local function ocultarGuis()
-	local pg = gui.Parent
-	for _, g in ipairs(pg:GetChildren()) do
-		ocultarGui(g)
-	end
-	table.insert(conexionesGuis, pg.ChildAdded:Connect(function(g)
-		if not guisRestauradas then
-			ocultarGui(g)
-		end
-	end))
-	-- GUIs del nucleo de Roblox (chat, mochila, lista de jugadores, etc.)
-	for _, tipo in ipairs(Enum.CoreGuiType:GetEnumItems()) do
-		if tipo ~= Enum.CoreGuiType.All then
-			local ok, v = pcall(function()
-				return StarterGui:GetCoreGuiEnabled(tipo)
-			end)
-			if ok then
-				coreGuiPrevio[tipo] = v
-			end
-		end
-	end
-	pcall(function()
-		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
-	end)
-end
-
-local function restaurarGuis()
-	if guisRestauradas then
-		return
-	end
-	guisRestauradas = true
-	for _, c in ipairs(conexionesGuis) do
-		c:Disconnect()
-	end
-	conexionesGuis = {}
-	for g, previo in pairs(guisOcultas) do
-		if g.Parent then
-			g.Enabled = previo
-		end
-	end
-	guisOcultas = {}
-	for tipo, previo in pairs(coreGuiPrevio) do
-		pcall(function()
-			StarterGui:SetCoreGuiEnabled(tipo, previo)
-		end)
-	end
-end
-
-ocultarGuis()
-
-----------------------------------------------------------------------
--- RIG: articulaciones (R15 y R6)
-----------------------------------------------------------------------
-local ARTICULACIONES = {
-	"Root", "Waist", "Neck",
-	"LeftHip", "LeftKnee", "LeftAnkle", "RightHip", "RightKnee", "RightAnkle",
-	"LeftShoulder", "LeftElbow", "LeftWrist", "RightShoulder", "RightElbow", "RightWrist",
-}
-
-local GRUPO = {
-	Root = "sentado", Waist = "sentado",
-	LeftHip = "sentado", LeftKnee = "sentado", LeftAnkle = "sentado",
-	RightHip = "sentado", RightKnee = "sentado", RightAnkle = "sentado",
-	Neck = "cabeza",
-	LeftShoulder = "brazos", LeftElbow = "brazos", LeftWrist = "brazos",
-	RightShoulder = "brazos", RightElbow = "brazos", RightWrist = "brazos",
-}
-
-local MAPA_R15 = {}
-for _, n in ipairs(ARTICULACIONES) do
-	MAPA_R15[n] = n
-end
-
-local MAPA_R6 = {
-	Root = "RootJoint",
-	Neck = "Neck",
-	LeftHip = "Left Hip",
-	RightHip = "Right Hip",
-	LeftShoulder = "Left Shoulder",
-	RightShoulder = "Right Shoulder",
-}
-
--- Las poses se escriben como rotaciones en el espacio de la parte padre,
--- alrededor del pivote de la articulacion. Esto funciona igual en R15 y R6
--- aunque sus C0 tengan orientaciones distintas.
-local function poner(av, nombre, cf)
-	local j = av.joints[nombre]
-	if j and cf then
-		j.motor.Transform = j.A * cf * j.B
-	end
-end
-
-local function aplicarPose(av, pose)
-	local raiz = pose.Root
-	if not av.r15 then
-		raiz = pose.Root * pose.Waist
-	end
-	for nombre in pairs(av.joints) do
-		if nombre == "Root" then
-			poner(av, nombre, raiz)
-		else
-			poner(av, nombre, pose[nombre])
-		end
-	end
-end
-
-local function sua3(x)
-	x = math.clamp(x, 0, 1)
-	return x * x * (3 - 2 * x)
-end
-
-----------------------------------------------------------------------
--- POSES
-----------------------------------------------------------------------
-local function anguloPierna(fp, A)
-	local hip = math.sin(fp) * HMAX * A
-	local flex = math.max(0, math.cos(fp + 0.4))
-	local rodilla = -(flex * 0.95 + 0.08) * A
-	local apoyo = math.clamp(0.5 - math.cos(fp) * 0.9, 0, 1)
-	local tobillo = -(hip + rodilla) * (0.35 + 0.65 * apoyo) - 0.3 * A * math.max(0, -math.sin(fp))
-	return hip, rodilla, tobillo
-end
-
-local function poseCaminata(av, A)
-	local f = av.fase
-	local s, c = math.sin(f), math.cos(f)
-	local hipI, rodI, tobI = anguloPierna(f, A)
-	local hipD, rodD, tobD = anguloPierna(f + math.pi, A)
-
-	local caida = av.pierna * (1 - math.cos(HMAX * A * s)) * 0.85
-	local giroP = -s * 0.10 * A
-	local rolP = c * 0.05 * A
-	local giroC = -giroP * 1.3
-	local rolC = -rolP * 0.7
-	local inclina = -0.14 * A
-
-	local p = {}
-	p.Root = CFrame.new(0, -caida, 0) * CFrame.Angles(0, giroP, rolP)
-	p.Waist = CFrame.Angles(inclina, giroC, rolC)
-	p.Neck = CFrame.Angles(-0.35 * A, -(giroP + giroC) * 0.9, -(rolP + rolC) * 0.9)
-	p.LeftHip = CFrame.Angles(hipI, 0, 0)
-	p.RightHip = CFrame.Angles(hipD, 0, 0)
-	p.LeftKnee = CFrame.Angles(rodI, 0, 0)
-	p.RightKnee = CFrame.Angles(rodD, 0, 0)
-	p.LeftAnkle = CFrame.Angles(tobI, 0, 0)
-	p.RightAnkle = CFrame.Angles(tobD, 0, 0)
-	-- brazos: balanceo opuesto a las piernas, codo mas flexionado al ir hacia adelante
-	p.LeftShoulder = CFrame.Angles(-0.08 - s * 0.36 * A, 0, -0.07)
-	p.RightShoulder = CFrame.Angles(-0.08 + s * 0.36 * A, 0, 0.07)
-	p.LeftElbow = CFrame.Angles(0.28 + 0.6 * math.max(0, -s) * A, 0, 0)
-	p.RightElbow = CFrame.Angles(0.28 + 0.6 * math.max(0, s) * A, 0, 0)
-	p.LeftWrist = CFrame.Angles(0.05, 0, 0)
-	p.RightWrist = CFrame.Angles(0.05, 0, 0)
-	return p
-end
-
-local function poseReposo(av, t)
-	local tt = t + av.semilla
-	local resp = math.sin(tt * 1.5)
-	local peso = math.sin(tt * 0.42)
-	local rolP = peso * 0.03
-	local cintura = -0.07 + resp * 0.018
-	local rolC = -rolP * 0.8
-	local rodI = -(0.06 + 0.12 * math.max(0, peso))
-	local rodD = -(0.06 + 0.12 * math.max(0, -peso))
-
-	local p = {}
-	p.Root = CFrame.new(peso * 0.05, -0.02 * math.abs(peso), 0) * CFrame.Angles(0, 0, rolP)
-	p.Waist = CFrame.Angles(cintura, 0.02 * math.sin(tt * 0.29), rolC)
-	p.Neck = CFrame.Angles(
-		av.miradaS + 0.025 * math.sin(tt * 0.5) - cintura * 0.6,
-		0.06 * math.sin(tt * 0.31),
-		-(rolP + rolC) * 0.9
-	)
-	p.LeftHip = CFrame.Angles(0, 0, -rolP - 0.02)
-	p.RightHip = CFrame.Angles(0, 0, -rolP + 0.02)
-	p.LeftKnee = CFrame.Angles(rodI, 0, 0)
-	p.RightKnee = CFrame.Angles(rodD, 0, 0)
-	p.LeftAnkle = CFrame.Angles(-rodI, 0, 0)
-	p.RightAnkle = CFrame.Angles(-rodD, 0, 0)
-	p.LeftShoulder = CFrame.Angles(-0.05 + resp * 0.01, 0, -0.08)
-	p.RightShoulder = CFrame.Angles(-0.05 - resp * 0.01, 0, 0.08)
-	p.LeftElbow = CFrame.Angles(0.3 + resp * 0.02, 0, 0)
-	p.RightElbow = CFrame.Angles(0.3 - resp * 0.02, 0, 0)
-	p.LeftWrist = CFrame.Angles(0.05, 0, 0)
-	p.RightWrist = CFrame.Angles(0.05, 0, 0)
-	return p
-end
-
-local function poseSentado(av, t)
-	local tt = t + av.semilla
-	local resp = math.sin(tt * 1.2)
-	local deriva = math.sin(tt * 0.35)
-	-- golpecitos ocasionales con el pie derecho
-	local tap = math.max(0, math.sin(tt * 3.4)) * math.max(0, math.sin(tt * 0.3 + 1.2))
-
-	local p = {}
-	p.Root = CFrame.new()
-	p.Waist = CFrame.Angles(0.05 + resp * 0.012, 0.015 * math.sin(tt * 0.27), 0)
-	p.Neck = CFrame.Angles(0.55 + 0.05 * deriva, 0.05 * math.sin(tt * 0.23), 0)
-	p.LeftHip = CFrame.Angles(1.5, 0, -0.1)
-	p.RightHip = CFrame.Angles(1.5, 0, 0.1)
-	p.LeftKnee = CFrame.Angles(-1.5 - 0.03 * math.sin(tt * 0.6), 0, 0)
-	p.RightKnee = CFrame.Angles(-1.5 - 0.03 * math.sin(tt * 0.6 + 1), 0, 0)
-	p.LeftAnkle = CFrame.Angles(0, 0, 0)
-	p.RightAnkle = CFrame.Angles(-0.14 * tap, 0, 0)
-	p.LeftShoulder = CFrame.Angles(-0.1 + 0.02 * deriva, 0, -1.3)
-	p.RightShoulder = CFrame.Angles(-0.1 - 0.02 * deriva, 0, 1.3)
-	p.LeftElbow = CFrame.Angles(0.12, 0, 0)
-	p.RightElbow = CFrame.Angles(0.12, 0, 0)
-	p.LeftWrist = CFrame.Angles(0.05, 0, 0)
-	p.RightWrist = CFrame.Angles(0.05, 0, 0)
-	return p
-end
-
-local function animarCuerpo(av)
-	local ahora = os.clock()
-	local dt = math.min(ahora - (av.tAnim or ahora), 0.1)
-	av.tAnim = ahora
-
-	local objetivo = av.llego and 0 or av.vel
-	av.velS = av.velS + (objetivo - av.velS) * (1 - math.exp(-dt * 5))
-	local A = math.clamp(av.velS / VEL_CAMINAR, 0, 1)
-	av.fase = av.fase + dt * av.omega * math.min(1, A * 4)
-	av.miradaS = av.miradaS + (av.mirada - av.miradaS) * (1 - math.exp(-dt * 1.5))
-	av.mirYS = av.mirYS + (av.mirY - av.mirYS) * (1 - math.exp(-dt * 2))
-
-	local reposo = poseReposo(av, ahora)
-	local w = sua3(A * 2.5)
-	local camina = (w > 0.001) and poseCaminata(av, A) or nil
-	local usaSentado = av.w.sentado > 0.001 or av.w.brazos > 0.001 or av.w.cabeza > 0.001
-	local sentado = usaSentado and poseSentado(av, ahora) or nil
-
-	local final = {}
-	for _, nombre in ipairs(ARTICULACIONES) do
-		local cf = reposo[nombre]
-		if camina then
-			cf = cf:Lerp(camina[nombre], w)
-		end
-		if sentado then
-			local ws = av.w[GRUPO[nombre]]
-			if ws > 0.001 then
-				cf = cf:Lerp(sentado[nombre], ws)
-			end
-		end
-		final[nombre] = cf
-	end
-	final.Neck = CFrame.Angles(0, av.mirYS, 0) * final.Neck
-	aplicarPose(av, final)
-end
-
-----------------------------------------------------------------------
--- AVATAR
-----------------------------------------------------------------------
-local function cargarAvatar(userId, nombre)
-	local ok, modelo = pcall(function()
-		return Players:CreateHumanoidModelFromUserId(userId)
-	end)
-	if not ok or not modelo then
-		local ok2, desc = pcall(function()
-			return Players:GetHumanoidDescriptionFromUserId(userId)
-		end)
-		if ok2 and desc then
-			ok, modelo = pcall(function()
-				return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
-			end)
-		end
-	end
-	if not ok or not modelo then
-		warn("No se pudo cargar el avatar " .. tostring(userId) .. ": " .. tostring(modelo))
-		return nil
-	end
-
-	modelo.Name = nombre
-	local hum = modelo:FindFirstChildOfClass("Humanoid")
-	if not hum or not modelo:FindFirstChild("HumanoidRootPart") then
-		warn("El avatar " .. tostring(userId) .. " no trae Humanoid/HumanoidRootPart")
-		modelo:Destroy()
-		return nil
-	end
-	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-	pcall(function()
-		hum.EvaluateStateMachine = false
-	end)
-	pcall(function()
-		hum:ChangeState(Enum.HumanoidStateType.Physics)
-	end)
-
-	-- Quitar scripts y Animators: si queda un Animator puede pisar las poses
-	local quitar = {}
-	for _, d in ipairs(modelo:GetDescendants()) do
-		if d:IsA("BasePart") then
-			d.Anchored = (d.Name == "HumanoidRootPart")
-			d.CanCollide = false
-		elseif d:IsA("LuaSourceContainer") or d:IsA("Animator") or d:IsA("AnimationController") then
-			table.insert(quitar, d)
-		end
-	end
-	for _, s in ipairs(quitar) do
-		s:Destroy()
-	end
-
-	modelo.PrimaryPart = modelo.HumanoidRootPart
-	modelo:PivotTo(CFrame.new(P(0, -3000, 0)))
-	modelo.Parent = carpeta
-	return modelo, hum
-end
-
-local function registrarArticulaciones(av)
-	local mapa = av.r15 and MAPA_R15 or MAPA_R6
-	local porNombre = {}
-	for _, d in ipairs(av.modelo:GetDescendants()) do
-		if d:IsA("Motor6D") and d.Part0 and d.Part1 and not d:FindFirstAncestorOfClass("Accessory") then
-			porNombre[d.Name] = d
-		end
-	end
-	local total = 0
-	for interno, real in pairs(mapa) do
-		local m = porNombre[real]
-		if m then
-			local pivote = m.C0.Position
-			av.joints[interno] = {
-				motor = m,
-				A = m.C0:Inverse() * CFrame.new(pivote),
-				B = CFrame.new(-pivote) * m.C0,
-			}
-			total = total + 1
-		end
-	end
-	print(string.format("[Escena] Rig %s, articulaciones animadas: %d", av.r15 and "R15" or "R6", total))
-	if total == 0 then
-		warn("[Escena] No se encontro ninguna articulacion, el avatar no se va a animar")
-	end
-end
-
-local function medirAsiento(av)
-	aplicarPose(av, poseSentado(av, 0))
-	for _ = 1, 10 do
-		RunService.Heartbeat:Wait()
-	end
-	local root = av.modelo.HumanoidRootPart
-	local canilla = av.modelo:FindFirstChild("LeftLowerLeg") or av.modelo:FindFirstChild("Left Leg")
-	local minY = math.huge
-	for _, nombre in ipairs({ "LeftUpperLeg", "RightUpperLeg", "LowerTorso", "Left Leg", "Right Leg", "Torso" }) do
-		local p = av.modelo:FindFirstChild(nombre)
-		if p and p:IsA("BasePart") then
-			local cf, s = p.CFrame, p.Size
-			local mitad = (math.abs(cf.RightVector.Y) * s.X + math.abs(cf.UpVector.Y) * s.Y + math.abs(cf.LookVector.Y) * s.Z) / 2
-			minY = math.min(minY, cf.Position.Y - mitad)
-		end
-	end
-	for _, j in pairs(av.joints) do
-		j.motor.Transform = CFrame.new()
-	end
-	local posturaOk = canilla and root.CFrame:PointToObjectSpace(canilla.Position).Z < -0.8
-	local medida = (posturaOk and minY < math.huge) and (root.Position.Y - minY) or nil
-	if not medida or medida < 0.3 or medida > 3 then
-		warn("No se pudo medir la altura del asiento, se usa el valor de respaldo " .. tostring(BAJO_ASIENTO_RESPALDO))
-		return BAJO_ASIENTO_RESPALDO
-	end
-	return medida
-end
-
-local function prepararAvatar(userId, nombre)
-	local modelo, hum = cargarAvatar(userId, nombre)
-	if not modelo then
-		return nil
-	end
-
-	task.wait(0.5)
-
-	local av = {
-		modelo = modelo,
-		hum = hum,
-		yaw = -math.pi / 2,
-		dirV = Vector3.new(1, 0, 0),
-		llego = true,
-		vel = 0,
-		fase = 0,
-		joints = {},
-		velS = 0,
-		semilla = 0,
-		mirada = -0.4,
-		miradaS = -0.4,
-		mirY = 0,
-		mirYS = 0,
-		w = { sentado = 0, brazos = 0, cabeza = 0 },
-	}
-
-	local root = modelo.HumanoidRootPart
-	if hum.RigType == Enum.HumanoidRigType.R15 and hum.HipHeight > 0 then
-		av.abajo = hum.HipHeight + root.Size.Y / 2
-	elseif hum.RigType == Enum.HumanoidRigType.R6 and modelo:FindFirstChild("Left Leg") then
-		av.abajo = root.Size.Y / 2 + modelo["Left Leg"].Size.Y
-	else
-		local bbCF, bbSize = modelo:GetBoundingBox()
-		av.abajo = modelo:GetPivot().Position.Y - (bbCF.Position.Y - bbSize.Y / 2)
-	end
-
-	av.pierna = av.abajo * 0.85
-	av.omega = math.clamp(math.pi * VEL_CAMINAR / (2 * av.pierna * HMAX), 3.5, 6.5)
-
-	av.r15 = hum.RigType == Enum.HumanoidRigType.R15
-	registrarArticulaciones(av)
-	av.bajoAsiento = medirAsiento(av)
-	av.pos = P(X_INICIO, 0, Z_CAMINO) + Vector3.new(0, av.abajo + 0.1, 0)
-	av.destino = av.pos
-	return av
-end
-
-local av = prepararAvatar(USERID, "Avatar")
-if not av then
-	warn("No se pudo preparar el avatar, se cancela la escena")
-	carpeta:Destroy()
-	restaurarGuis()
-	gui:Destroy()
-	return
-end
-
-local function colocarAvatar(a)
-	a.modelo:PivotTo(CFrame.new(a.pos) * CFrame.Angles(0, a.yaw, 0))
-end
-
-local function yawHacia(d)
-	return math.atan2(-d.X, -d.Z)
-end
-
-local function difAng(a, b)
-	return (b - a + math.pi) % (2 * math.pi) - math.pi
-end
-
-----------------------------------------------------------------------
--- ILUMINACION Y EFECTOS
-----------------------------------------------------------------------
-local PROPS_LUZ = {
-	"ClockTime", "Brightness", "Ambient", "OutdoorAmbient", "ColorShift_Top",
-	"ColorShift_Bottom", "FogColor", "FogEnd", "FogStart",
-}
-local luzOriginal = {}
-for _, p in ipairs(PROPS_LUZ) do
-	luzOriginal[p] = Lighting[p]
-end
-
-local CLASES_OCULTAR = {
-	"Sky", "Atmosphere", "BloomEffect", "BlurEffect", "ColorCorrectionEffect",
-	"DepthOfFieldEffect", "SunRaysEffect",
-}
-local ocultos = {}
-for _, hijo in ipairs(Lighting:GetChildren()) do
-	for _, clase in ipairs(CLASES_OCULTAR) do
-		if hijo:IsA(clase) then
-			table.insert(ocultos, hijo)
-			break
-		end
-	end
-end
-for _, o in ipairs(ocultos) do
-	o.Parent = nil
-end
-
-Lighting.ClockTime = 0
-Lighting.Brightness = 1.5
-Lighting.Ambient = Color3.fromRGB(70, 82, 120)
-Lighting.OutdoorAmbient = Color3.fromRGB(78, 92, 135)
-Lighting.ColorShift_Top = Color3.fromRGB(60, 80, 140)
-Lighting.ColorShift_Bottom = Color3.new(0, 0, 0)
-Lighting.FogColor = Color3.fromRGB(22, 28, 48)
-Lighting.FogStart = 90
-Lighting.FogEnd = 650
-
-local efectos = {}
-
-if CIELO_ID then
-	local okC, cargado = pcall(function()
-		return game:GetObjects("rbxassetid://" .. CIELO_ID)
-	end)
-	local skyNuevo = nil
-	if not okC then
-		warn("[Escena] GetObjects fallo para el cielo: " .. tostring(cargado))
-	else
-		for _, o in ipairs(cargado) do
-			local clases = {}
-			for _, d in ipairs(o:GetDescendants()) do
-				table.insert(clases, d.ClassName)
-			end
-			print(string.format("[Escena] Cielo: llego %s (%s), contenido: %s", o.Name, o.ClassName, table.concat(clases, ", ")))
-		end
-	end
-	if okC and cargado then
-		for _, o in ipairs(cargado) do
-			skyNuevo = o:IsA("Sky") and o or o:FindFirstChildWhichIsA("Sky", true)
-			if skyNuevo then
-				break
-			end
-		end
-	end
-	if skyNuevo then
-		local copia = skyNuevo:Clone()
-		copia.Parent = Lighting
-		table.insert(efectos, copia)
-		print("[Escena] Cielo cargado: " .. tostring(CIELO_ID))
-		print("[Escena] Cielo caras Bk|Ft|Lf|Rt|Up|Dn: " .. table.concat({ copia.SkyboxBk, copia.SkyboxFt, copia.SkyboxLf, copia.SkyboxRt, copia.SkyboxUp, copia.SkyboxDn }, " | "))
-	else
-		warn("No se pudo cargar el cielo " .. tostring(CIELO_ID) .. ": " .. tostring(cargado))
-	end
-	if okC and cargado then
-		for _, o in ipairs(cargado) do
-			o:Destroy()
-		end
-	end
-end
-
-local bloom = Instance.new("BloomEffect")
-bloom.Intensity = 0.35
-bloom.Size = 24
-bloom.Threshold = 2
-bloom.Parent = Lighting
-table.insert(efectos, bloom)
-
-local correccion = Instance.new("ColorCorrectionEffect")
-correccion.Contrast = 0.12
-correccion.Saturation = -0.06
-correccion.TintColor = Color3.fromRGB(215, 228, 255)
-correccion.Parent = Lighting
-table.insert(efectos, correccion)
-
-local rayos = Instance.new("SunRaysEffect")
-rayos.Intensity = 0
-rayos.Spread = 0.7
-rayos.Parent = Lighting
-table.insert(efectos, rayos)
-
-local dof = nil
-if PROFUNDIDAD_CAMPO then
-	dof = Instance.new("DepthOfFieldEffect")
-	dof.FarIntensity = 0.3
-	dof.NearIntensity = 0
-	dof.InFocusRadius = 25
-	dof.FocusDistance = 30
-	dof.Parent = Lighting
-	table.insert(efectos, dof)
-end
-local focoFijo = 30
-local enfocarAvatar = false
-
--- desenfoque suave que solo se enciende durante los cortes (transiciones)
-local blurCorte = Instance.new("BlurEffect")
-blurCorte.Size = 0
-blurCorte.Enabled = false
-blurCorte.Parent = Lighting
-table.insert(efectos, blurCorte)
-
-----------------------------------------------------------------------
--- MUNDO
-----------------------------------------------------------------------
-local function parte(forma, tam, cf, color, material, transp)
-	local p = Instance.new("Part")
-	p.Shape = forma
-	p.Size = tam
-	p.CFrame = cf
-	p.Color = color
-	p.Material = material
-	p.Transparency = transp or 0
-	p.Anchored = true
-	p.CanCollide = false
-	p.CanQuery = false
-	p.CanTouch = false
-	p.CastShadow = true
-	p.Parent = carpeta
-	return p
-end
-
-local BLOQUE = Enum.PartType.Block
-local BOLA = Enum.PartType.Ball
-local CILINDRO = Enum.PartType.Cylinder
-local nubes = {}
-local pajaros = {}
-
-local function crearHojas(base, tasa)
-	local em = Instance.new("ParticleEmitter")
-	em.Rate = tasa
-	em.Lifetime = NumberRange.new(6, 9)
-	em.Speed = NumberRange.new(2.5, 4)
-	em.EmissionDirection = Enum.NormalId.Bottom
-	em.Acceleration = Vector3.new(0.5, -0.3, 0)
-	em.Drag = 0
-	em.Size = NumberSequence.new(0.22)
-	em.Rotation = NumberRange.new(0, 360)
-	em.RotSpeed = NumberRange.new(-60, 60)
-	em.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.15, 0),
-		NumberSequenceKeypoint.new(0.85, 0),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	em.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(215, 230, 250))
-	em.Texture = "rbxasset://textures/particles/smoke_main.dds"
-	em.LightEmission = 0.25
-	em.Parent = base
-end
-
-do
-	local rnd = Random.new(11)
-	local MADERA = Color3.fromRGB(120, 82, 50)
-	local HIERRO = Color3.fromRGB(35, 38, 45)
-	local NIEVE = Color3.fromRGB(240, 246, 252)
-
-	-- suelo y camino
-	local suelo = parte(BLOQUE, Vector3.new(1600, 1, 1600), CFrame.new(P(0, -0.5, 0)), Color3.fromRGB(238, 244, 250), Enum.Material.Snow)
-	suelo.CastShadow = false
-	local camino = parte(BLOQUE, Vector3.new(78, 0.2, 4), CFrame.new(P(-27, 0.0, Z_CAMINO)), Color3.fromRGB(196, 204, 216), Enum.Material.Cobblestone)
-	camino.CastShadow = false
-	local explanada = parte(BLOQUE, Vector3.new(4.2, 0.2, 2.6), CFrame.new(P(BX, 0.0, 2.4)), Color3.fromRGB(196, 204, 216), Enum.Material.Cobblestone)
-	explanada.CastShadow = false
-
-	-- bordillo del camino (con hueco hacia la banca)
-	for x = -64, 10, 3 do
-		local giro = CFrame.Angles(0, rnd:NextNumber(-0.05, 0.05), 0)
-		parte(BLOQUE, Vector3.new(2.5, 0.35, 0.5), CFrame.new(P(x, 0.1, Z_CAMINO - 2.2)) * giro, Color3.fromRGB(128, 124, 116), Enum.Material.Slate)
-		if math.abs(x - BX) > 3 then
-			parte(BLOQUE, Vector3.new(2.5, 0.35, 0.5), CFrame.new(P(x, 0.1, Z_CAMINO + 2.2)) * giro, Color3.fromRGB(128, 124, 116), Enum.Material.Slate)
-		end
-	end
-
-	-- colinas lejanas
-	for _, h in ipairs({ { -380, 690, 380 }, { -60, 740, 300 }, { 250, 700, 420 }, { 560, 720, 340 }, { -640, 620, 300 } }) do
-		local d = h[3]
-		local col = parte(BOLA, Vector3.new(d, d, d), CFrame.new(P(h[1], -d * 0.36, h[2])), Color3.fromRGB(226, 234, 244), Enum.Material.Snow)
-		col.CastShadow = false
-	end
-
-	-- nubes: cumulos con base plana y cupula, cirros altos y pajaros
-	local function nube(cx, cy, cz, ancho, vel)
-		local function reg(p)
-			p.CastShadow = false
-			table.insert(nubes, { p = p, cf = p.CFrame, v = vel })
-		end
-		-- base plana, algo mas gris
-		for i = -1, 1 do
-			local d = ancho * (0.42 - math.abs(i) * 0.08)
-			reg(parte(
-				CILINDRO,
-				Vector3.new(5, d, d),
-				CFrame.new(P(cx + i * ancho * 0.26, cy, cz + rnd:NextNumber(-6, 6))) * CFrame.Angles(0, 0, math.pi / 2),
-				Color3.fromRGB(192, 205, 223),
-				Enum.Material.SmoothPlastic,
-				0.04
-			))
-		end
-		-- cupulas: mas grandes y blancas arriba, mas chicas y transparentes en los bordes
-		local puffs = math.min(math.floor(ancho / 12) + 5, 20)
-		for _ = 1, puffs do
-			local u = rnd:NextNumber(-1, 1)
-			local borde = math.abs(u)
-			local d = ancho * rnd:NextNumber(0.16, 0.3) * (1 - borde * 0.55)
-			local alto = d * 0.35 + (1 - borde) * ancho * 0.12 * rnd:NextNumber(0.4, 1)
-			local brillo = math.clamp(alto / (ancho * 0.3), 0, 1)
-			local color = Color3.fromRGB(212 + 43 * brillo, 221 + 34 * brillo, 235 + 20 * brillo)
-			reg(parte(
-				BOLA,
-				Vector3.new(d, d, d),
-				CFrame.new(P(cx + u * ancho * 0.5, cy + alto, cz + rnd:NextNumber(-1, 1) * ancho * 0.16)),
-				color,
-				Enum.Material.SmoothPlastic,
-				0.05 + borde * 0.25
-			))
-		end
-	end
-	for _ = 1, MOSTRAR_NUBES and 8 or 0 do
-		nube(
-			rnd:NextNumber(-500, 500),
-			rnd:NextNumber(170, 290),
-			rnd:NextNumber(70, 650),
-			rnd:NextNumber(110, 230),
-			rnd:NextNumber(0.6, 1.8)
-		)
-	end
-	-- cirros finos a gran altura
-	for _ = 1, MOSTRAR_NUBES and 6 or 0 do
-		local p = parte(
-			BLOQUE,
-			Vector3.new(rnd:NextNumber(200, 340), 1.5, rnd:NextNumber(35, 70)),
-			CFrame.new(P(rnd:NextNumber(-450, 450), rnd:NextNumber(380, 460), rnd:NextNumber(100, 700))) * CFrame.Angles(0, rnd:NextNumber(-0.4, 0.4), 0),
-			Color3.new(1, 1, 1),
-			Enum.Material.SmoothPlastic,
-			rnd:NextNumber(0.62, 0.8)
-		)
-		p.CastShadow = false
-		table.insert(nubes, { p = p, cf = p.CFrame, v = 0.5 })
-	end
-
-	-- pajaros (golondrinas) en formacion: cuerpo, cabeza, pico, cola bifurcada y alas de 2 tramos
-	local function bandada(n, x0, y, z, vel)
-		local DORSO = Color3.fromRGB(30, 34, 54)
-		local PUNTA = Color3.fromRGB(16, 18, 30)
-		local VIENTRE = Color3.fromRGB(226, 220, 204)
-		local PICO = Color3.fromRGB(230, 150, 50)
-		local function pt(forma, tam, color)
-			local p = parte(forma, tam, CFrame.new(P(0, -3000, 0)), color, Enum.Material.SmoothPlastic)
-			p.CastShadow = false
-			return p
-		end
-		for i = 1, n do
-			local fila = math.ceil(i / 2)
-			local rig = {
-				{ pt(BOLA, Vector3.new(0.5, 0.5, 0.5), DORSO), CFrame.new(0, 0, 0) },
-				{ pt(BOLA, Vector3.new(0.42, 0.42, 0.42), DORSO), CFrame.new(0, 0.01, 0.3) },
-				{ pt(BOLA, Vector3.new(0.36, 0.36, 0.36), VIENTRE), CFrame.new(0, -0.1, -0.05) },
-				{ pt(BOLA, Vector3.new(0.32, 0.32, 0.32), DORSO), CFrame.new(0, 0.06, -0.38) },
-				{ pt(BLOQUE, Vector3.new(0.07, 0.06, 0.17), PICO), CFrame.new(0, 0.03, -0.56) },
-				{ pt(BLOQUE, Vector3.new(0.1, 0.03, 0.5), PUNTA), CFrame.new(-0.09, 0, 0.62) * CFrame.Angles(0, -0.22, 0) },
-				{ pt(BLOQUE, Vector3.new(0.1, 0.03, 0.5), PUNTA), CFrame.new(0.09, 0, 0.62) * CFrame.Angles(0, 0.22, 0) },
-			}
-			table.insert(pajaros, {
-				rig = rig,
-				aIL = pt(BLOQUE, Vector3.new(1.1, 0.05, 0.55), DORSO),
-				aOL = pt(BLOQUE, Vector3.new(1.0, 0.04, 0.42), PUNTA),
-				aIR = pt(BLOQUE, Vector3.new(1.1, 0.05, 0.55), DORSO),
-				aOR = pt(BLOQUE, Vector3.new(1.0, 0.04, 0.42), PUNTA),
-				x0 = x0 - fila * 3.5,
-				y = y + rnd:NextNumber(-1.5, 1.5),
-				z = z + ((i % 2 == 0) and 1 or -1) * fila * 3.5,
-				vel = vel,
-				fase = rnd:NextNumber(0, 6.28),
-			})
-		end
-	end
-	bandada(3, -60, 17, 55, 6)
-	bandada(7, 40, 95, 90, 8)
-
-	-- arboles
-	local function arbol(x, z, escala)
-		local base = P(x, 0, z)
-		local alto = 9 * escala
-		parte(
-			CILINDRO,
-			Vector3.new(alto, 2.2 * escala, 2.2 * escala),
-			CFrame.new(base + Vector3.new(0, alto / 2, 0)) * CFrame.Angles(0, 0, math.pi / 2),
-			Color3.fromRGB(70, 52, 40),
-			Enum.Material.Wood
-		)
-		local hojas = {
-			{ 0, 11.5, 0, 12, Color3.fromRGB(236, 243, 250) },
-			{ 4, 10.2, 2.5, 8, Color3.fromRGB(226, 236, 246) },
-			{ -4, 10.5, -2, 8.5, Color3.fromRGB(214, 228, 240) },
-			{ 1.5, 15.2, 0.5, 8, Color3.fromRGB(240, 246, 252) },
-			{ -2.5, 9.6, 4, 7, Color3.fromRGB(232, 240, 248) },
-		}
-		for _, h in ipairs(hojas) do
-			local d = h[4] * escala
-			parte(
-				BOLA,
-				Vector3.new(d, d, d),
-				CFrame.new(base + Vector3.new(h[1], h[2], h[3]) * escala),
-				h[5],
-				Enum.Material.Snow
-			)
-		end
-	end
-	arbol(-16, 16, 1.2)
-	arbol(30, 24, 1)
-	arbol(-42, 30, 1.3)
-	arbol(48, -12, 1)
-	arbol(-30, -24, 0.9)
-	arbol(0, 40, 1.1)
-	arbol(BX + 14, 22, 1.0)
-	arbol(BX - 16, 34, 1.15)
-	arbol(-58, -18, 1.1)
-	arbol(66, 10, 1.2)
-
-	-- arbustos
-	local function arbusto(x, z, e)
-		for i = 1, 3 do
-			local d = (2.6 + rnd:NextNumber(0, 1.2)) * e
-			parte(
-				BOLA,
-				Vector3.new(d, d, d),
-				CFrame.new(P(x + (i - 2) * 1.5 * e, d * 0.4, z + rnd:NextNumber(-0.5, 0.5))),
-				Color3.fromRGB(218 + rnd:NextInteger(0, 20), 230 + rnd:NextInteger(0, 12), 238),
-				Enum.Material.Snow
-			)
-		end
-	end
-	for x = BX - 13, BX + 13, 6 do
-		arbusto(x, BZ + 10.5, 1)
-	end
-	arbusto(-50, 3.5, 1)
-	arbusto(-32, 3.5, 0.9)
-	arbusto(-6, 3.8, 1.1)
-	arbusto(-40, -6, 0.9)
-
-	-- flores
-	local COLORES_FLOR = {
-		Color3.fromRGB(240, 246, 252), Color3.fromRGB(225, 236, 248), Color3.fromRGB(245, 245, 250),
-		Color3.fromRGB(205, 225, 245), Color3.fromRGB(250, 252, 255),
-	}
-	local function flor(x, z)
-		local base = P(x, 0, z)
-		local tallo = parte(BLOQUE, Vector3.new(0.1, 0.55, 0.1), CFrame.new(base + Vector3.new(0, 0.27, 0)), Color3.fromRGB(92, 72, 54), Enum.Material.Wood)
-		tallo.CastShadow = false
-		local c = COLORES_FLOR[rnd:NextInteger(1, #COLORES_FLOR)]
-		local cab = parte(BOLA, Vector3.new(0.42, 0.42, 0.42), CFrame.new(base + Vector3.new(0, 0.62, 0)), c, Enum.Material.SmoothPlastic)
-		cab.CastShadow = false
-	end
-	for _ = 1, 40 do
-		local x = BX + rnd:NextNumber(-10, 10)
-		local z = BZ + rnd:NextNumber(0.2, 6)
-		if not (math.abs(x - BX) < 4.6 and z < BZ + 1.6) then
-			flor(x, z)
-		end
-	end
-	for _ = 1, 30 do
-		flor(rnd:NextNumber(-64, 10), Z_CAMINO - rnd:NextNumber(3.2, 6))
-	end
-
-	-- farolas (detras del camino)
-	local function farola(x, z)
-		local base = P(x, 0, z)
-		parte(CILINDRO, Vector3.new(0.5, 1.2, 1.2), CFrame.new(base + Vector3.new(0, 0.35, 0)) * CFrame.Angles(0, 0, math.pi / 2), HIERRO, Enum.Material.Metal)
-		parte(CILINDRO, Vector3.new(7, 0.35, 0.35), CFrame.new(base + Vector3.new(0, 4.1, 0)) * CFrame.Angles(0, 0, math.pi / 2), HIERRO, Enum.Material.Metal)
-		local foco = parte(BOLA, Vector3.new(1.1, 1.1, 1.1), CFrame.new(base + Vector3.new(0, 8.2, 0)), Color3.fromRGB(255, 235, 180), Enum.Material.Neon)
-		foco.CastShadow = false
-		parte(BLOQUE, Vector3.new(1.7, 0.2, 1.7), CFrame.new(base + Vector3.new(0, 8.95, 0)), HIERRO, Enum.Material.Metal)
-		parte(BLOQUE, Vector3.new(1.5, 0.14, 1.5), CFrame.new(base + Vector3.new(0, 9.12, 0)), NIEVE, Enum.Material.Snow)
-		local luz = Instance.new("PointLight")
-		luz.Range = 36
-		luz.Brightness = 3.2
-		luz.Color = Color3.fromRGB(255, 225, 170)
-		luz.Shadows = false
-		luz.Parent = foco
-	end
-	farola(-50, Z_CAMINO + 3.2)
-	farola(-32, Z_CAMINO + 3.2)
-	farola(-6, Z_CAMINO + 3.2)
-	farola(BX - 8, BZ + 3)
-	farola(BX + 8, BZ + 3)
-
-	-- valla detras de la banca
-	local zc = BZ + 8
-	for x = BX - 14, BX + 14, 2 do
-		parte(BLOQUE, Vector3.new(0.28, 1.7, 0.28), CFrame.new(P(x, 0.85, zc)), MADERA, Enum.Material.Wood)
-	end
-	for _, y in ipairs({ 0.7, 1.35 }) do
-		parte(BLOQUE, Vector3.new(28.4, 0.22, 0.14), CFrame.new(P(BX, y, zc)), MADERA, Enum.Material.Wood)
-	end
-
-	parte(BLOQUE, Vector3.new(28.4, 0.12, 0.26), CFrame.new(P(BX, 1.52, zc)), NIEVE, Enum.Material.Snow)
-
-	-- guirnalda de luces calidas y de colores sobre la valla
-	local COLORES_LUZ = {
-		Color3.fromRGB(255, 200, 110), Color3.fromRGB(255, 150, 130),
-		Color3.fromRGB(150, 210, 255), Color3.fromRGB(190, 255, 170),
-	}
-	for i = 0, 28 do
-		local x = BX - 14 + i
-		local y = 1.9 - 0.3 * math.sin(math.pi * (i % 2) / 2)
-		local color = COLORES_LUZ[i % #COLORES_LUZ + 1]:Lerp(Color3.fromRGB(255, 240, 215), 0.2)
-		local bombilla = parte(BOLA, Vector3.new(0.32, 0.32, 0.32), CFrame.new(P(x, y, zc - 0.2)), color, Enum.Material.Neon)
-		bombilla.CastShadow = false
-		if i % 3 == 0 then
-			local lb = Instance.new("PointLight")
-			lb.Range = 12
-			lb.Brightness = 1.6
-			lb.Color = color
-			lb.Shadows = false
-			lb.Parent = bombilla
-		end
-	end
-
-	-- papelera
-	parte(CILINDRO, Vector3.new(1.4, 1.1, 1.1), CFrame.new(P(BX - 6.2, 0.8, BZ + 0.2)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(40, 70, 50), Enum.Material.Metal)
-	parte(CILINDRO, Vector3.new(0.15, 1.25, 1.25), CFrame.new(P(BX - 6.2, 1.55, BZ + 0.2)) * CFrame.Angles(0, 0, math.pi / 2), HIERRO, Enum.Material.Metal)
-
-	-- banca: asiento y respaldo con tablones (misma altura de asiento que antes)
-	for _, dz in ipairs({ -0.63, -0.21, 0.21, 0.63 }) do
-		parte(BLOQUE, Vector3.new(8, 0.3, 0.34), CFrame.new(P(BX, ALTO_ASIENTO - 0.15, BZ + dz)), MADERA, Enum.Material.Wood)
-	end
-	for _, y in ipairs({ 1.85, 2.45, 3.05 }) do
-		parte(BLOQUE, Vector3.new(8, 0.5, 0.3), CFrame.new(P(BX, y, BZ + 0.95)), MADERA, Enum.Material.Wood)
-	end
-	for _, dx in ipairs({ -3.4, 3.4 }) do
-		parte(BLOQUE, Vector3.new(0.3, ALTO_ASIENTO - 0.3, 1.6), CFrame.new(P(BX + dx, (ALTO_ASIENTO - 0.3) / 2, BZ)), HIERRO, Enum.Material.Metal)
-		parte(BLOQUE, Vector3.new(0.3, 1.9, 0.3), CFrame.new(P(BX + dx, 2.45, BZ + 0.95)), HIERRO, Enum.Material.Metal)
-	end
-	for _, dx in ipairs({ -3.85, 3.85 }) do
-		parte(BLOQUE, Vector3.new(0.25, 0.18, 1.5), CFrame.new(P(BX + dx, 2.25, BZ + 0.1)), HIERRO, Enum.Material.Metal)
-		parte(BLOQUE, Vector3.new(0.2, 0.75, 0.2), CFrame.new(P(BX + dx, 1.88, BZ - 0.55)), HIERRO, Enum.Material.Metal)
-	end
-
-	parte(BLOQUE, Vector3.new(8.1, 0.12, 0.36), CFrame.new(P(BX, 3.36, BZ + 0.95)), NIEVE, Enum.Material.Snow)
-	parte(CILINDRO, Vector3.new(0.1, 1.1, 1.1), CFrame.new(P(BX - 6.2, 1.68, BZ + 0.2)) * CFrame.Angles(0, 0, math.pi / 2), NIEVE, Enum.Material.Snow)
-
-	-- hojas cayendo del arbol grande y cerca de la banca
-	local hojasCaen = parte(BLOQUE, Vector3.new(14, 0.5, 14), CFrame.new(P(-16, 14, 16)), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, 1)
-	crearHojas(hojasCaen, 40)
-	local hojasBanca = parte(BLOQUE, Vector3.new(10, 0.5, 10), CFrame.new(P(BX + 2, 12, BZ + 6)), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, 1)
-	crearHojas(hojasBanca, 30)
-	local nevada = parte(BLOQUE, Vector3.new(110, 1, 80), CFrame.new(P(BX - 10, 18, 4)), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, 1)
-	crearHojas(nevada, 260)
-
-	-- polvo de luz / polen flotando
-	local motas = parte(BLOQUE, Vector3.new(60, 12, 36), CFrame.new(P(BX - 6, 6, 0)), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, 1)
-	local emMotas = Instance.new("ParticleEmitter")
-	emMotas.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	emMotas.Rate = 14
-	emMotas.Lifetime = NumberRange.new(6, 10)
-	emMotas.Speed = NumberRange.new(0.1, 0.4)
-	emMotas.SpreadAngle = Vector2.new(180, 180)
-	emMotas.LightEmission = 0.8
-	emMotas.Size = NumberSequence.new(0.14)
-	emMotas.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.2, 0.35),
-		NumberSequenceKeypoint.new(0.8, 0.35),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	emMotas.Color = ColorSequence.new(Color3.fromRGB(225, 238, 255))
-	pcall(function()
-		emMotas.Shape = Enum.ParticleEmitterShape.Box
-		emMotas.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
-	end)
-	emMotas.Parent = motas
-end
-
-----------------------------------------------------------------------
--- EXTRAS v13: detalle de escenario, halos de luz y luciernagas (livianos)
--- Todo lo estatico va sin sombras; lo que se mueve son pocas partes.
-----------------------------------------------------------------------
-local extras = { luciernagas = {}, luces = {} }
-
-do
-	local NUM_LUCIERNAGAS = 14
-	local TRANSP_HALO = 0.92
-	local TRANSP_CHARCO = 0.95
-	local rnd = Random.new(23)
-	local NIEVE2 = Color3.fromRGB(240, 246, 252)
-	local zc0 = BZ + 8
-
-	-- monticulos de nieve: esfera enterrada en el suelo (solo asoma la cupula)
-	local function monticulo(x, z, ancho, alto)
-		local R = (ancho * ancho + alto * alto) / (2 * alto)
-		local m = parte(BOLA, Vector3.new(2 * R, 2 * R, 2 * R), CFrame.new(P(x, alto - R, z)), NIEVE2, Enum.Material.Snow)
-		m.CastShadow = false
-	end
-	for x = BX - 13, BX + 13, 2.6 do
-		monticulo(x + rnd:NextNumber(-0.4, 0.4), zc0 + rnd:NextNumber(-0.3, 0.5), rnd:NextNumber(1.1, 1.7), rnd:NextNumber(0.25, 0.5))
-	end
-	monticulo(BX - 4.6, BZ + 0.4, 1.0, 0.35)
-	monticulo(BX + 4.6, BZ + 0.5, 1.1, 0.4)
-
-	-- nieve sobre cada poste de la valla
-	for x = BX - 14, BX + 14, 2 do
-		local c = parte(BLOQUE, Vector3.new(0.44, 0.12, 0.44), CFrame.new(P(x, 1.76, zc0)), NIEVE2, Enum.Material.Snow)
-		c.CastShadow = false
-	end
-
-	-- muneco de nieve detras de la banca, mirando hacia el camino
-	do
-		local sx, sz = BX - 5.6, BZ + 4.6
-		local function bola(d, y, color)
-			local b = parte(BOLA, Vector3.new(d, d, d), CFrame.new(P(sx, y, sz)), color or NIEVE2, Enum.Material.Snow)
-			b.CastShadow = false
-			return b
-		end
-		bola(1.7, 0.75)
-		bola(1.2, 1.95)
-		bola(0.85, 2.85)
-		local CARBON = Color3.fromRGB(28, 26, 26)
-		for _, dx in ipairs({ -0.13, 0.13 }) do
-			local o = parte(BOLA, Vector3.new(0.1, 0.1, 0.1), CFrame.new(P(sx + dx, 2.92, sz - 0.36)), CARBON, Enum.Material.SmoothPlastic)
-			o.CastShadow = false
-		end
-		for _, y in ipairs({ 2.2, 1.95, 1.7 }) do
-			local o = parte(BOLA, Vector3.new(0.1, 0.1, 0.1), CFrame.new(P(sx, y, sz - 0.57)), CARBON, Enum.Material.SmoothPlastic)
-			o.CastShadow = false
-		end
-		local nariz = parte(BLOQUE, Vector3.new(0.08, 0.08, 0.3), CFrame.new(P(sx, 2.82, sz - 0.5)), Color3.fromRGB(240, 120, 30), Enum.Material.SmoothPlastic)
-		nariz.CastShadow = false
-		local bufanda = parte(CILINDRO, Vector3.new(0.16, 1.0, 1.0), CFrame.new(P(sx, 2.38, sz)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(196, 48, 52), Enum.Material.Fabric)
-		bufanda.CastShadow = false
-		for _, lado in ipairs({ -1, 1 }) do
-			local brazo = parte(BLOQUE, Vector3.new(0.9, 0.06, 0.06), CFrame.new(P(sx + lado * 0.75, 2.15, sz)) * CFrame.Angles(0, 0, lado * 0.5), Color3.fromRGB(92, 72, 54), Enum.Material.Wood)
-			brazo.CastShadow = false
-		end
-	end
-
-	-- halo suave en cada foco de farola y charco de luz sobre la nieve
-	local LAMPARAS = {
-		{ -50, Z_CAMINO + 3.2 }, { -32, Z_CAMINO + 3.2 }, { -6, Z_CAMINO + 3.2 },
-		{ BX - 8, BZ + 3 }, { BX + 8, BZ + 3 },
-	}
-	local CALIDO = Color3.fromRGB(255, 226, 160)
-	for _, l in ipairs(LAMPARAS) do
-		local halo = parte(BOLA, Vector3.new(3.6, 3.6, 3.6), CFrame.new(P(l[1], 8.2, l[2])), CALIDO, Enum.Material.Neon, TRANSP_HALO)
-		halo.CastShadow = false
-		local charco = parte(CILINDRO, Vector3.new(0.05, 11, 11), CFrame.new(P(l[1], 0.05, l[2])) * CFrame.Angles(0, 0, math.pi / 2), CALIDO, Enum.Material.Neon, TRANSP_CHARCO)
-		charco.CastShadow = false
-	end
-
-	-- luces existentes (farolas y guirnalda): guardan su brillo base para titilar un poco
-	for _, d in ipairs(carpeta:GetDescendants()) do
-		if d:IsA("PointLight") then
-			table.insert(extras.luces, { l = d, b = d.Brightness, f = rnd:NextNumber(0, 6.28), a = (d.Range > 20) and 0.05 or 0.12 })
-		end
-	end
-
-	-- luciernagas: una esfera neon diminuta + un brillo suave que la sigue
-	local COLORES_LUC = { Color3.fromRGB(200, 255, 140), Color3.fromRGB(255, 244, 150) }
-	for i = 1, NUM_LUCIERNAGAS do
-		local cx, cz
-		if i <= math.ceil(NUM_LUCIERNAGAS * 0.6) then
-			cx = BX + rnd:NextNumber(-8, 8)
-			cz = BZ + rnd:NextNumber(-3.5, 5)
-		else
-			cx = rnd:NextNumber(-12, BX - 3)
-			cz = Z_CAMINO + rnd:NextNumber(-4.5, 3.5)
-		end
-		local color = COLORES_LUC[i % 2 + 1]
-		local b = parte(BOLA, Vector3.new(0.16, 0.16, 0.16), CFrame.new(P(cx, 2, cz)), color, Enum.Material.Neon)
-		b.CastShadow = false
-		local em = Instance.new("ParticleEmitter")
-		em.Texture = "rbxasset://textures/particles/smoke_main.dds"
-		em.Rate = 0
-		em.Lifetime = NumberRange.new(0.9, 1.2)
-		em.Speed = NumberRange.new(0, 0)
-		em.LockedToPart = true
-		em.LightEmission = 1
-		em.Color = ColorSequence.new(color)
-		em.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.18), NumberSequenceKeypoint.new(1, 0.34) })
-		em.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.85),
-			NumberSequenceKeypoint.new(0.4, 0.55),
-			NumberSequenceKeypoint.new(1, 1),
-		})
-		em.Parent = b
-		table.insert(extras.luciernagas, {
-			p = b, em = em, enc = false,
-			c = P(cx, rnd:NextNumber(1.3, 3.4), cz),
-			rx = rnd:NextNumber(0.8, 2.2), ry = rnd:NextNumber(0.3, 0.7), rz = rnd:NextNumber(0.8, 2.2),
-			fa = rnd:NextNumber(0.25, 0.6), fb = rnd:NextNumber(0.4, 0.9), fc = rnd:NextNumber(0.25, 0.6),
-			fl = rnd:NextNumber(0.5, 1.1),
-			p1 = rnd:NextNumber(0, 6.28), p2 = rnd:NextNumber(0, 6.28), p3 = rnd:NextNumber(0, 6.28), p4 = rnd:NextNumber(0, 6.28),
-		})
-	end
-end
-
-function extras.animar(tN, n)
-	for _, f in ipairs(extras.luciernagas) do
-		local x = math.sin(tN * f.fa + f.p1) * f.rx
-		local y = math.sin(tN * f.fb + f.p2) * f.ry
-		local z = math.cos(tN * f.fc + f.p3) * f.rz
-		f.p.CFrame = CFrame.new(f.c + Vector3.new(x, y, z))
-		local b = 0.5 + 0.5 * math.sin(tN * f.fl + f.p4)
-		-- si pasan cerca de la camara se desvanecen (evita el destello que tapa la imagen)
-		local vis = math.clamp(((f.p.Position - camara.CFrame.Position).Magnitude - 3) / 4, 0, 1)
-		f.p.Transparency = 1 - b * b * vis
-		local enc = b > 0.45 and vis > 0.5
-		if enc ~= f.enc then
-			f.enc = enc
-			f.em.Rate = enc and 3 or 0
-		end
-	end
-	-- titileo sutil de farolas y guirnalda: solo cada 3 cuadros
-	if n % 3 == 0 then
-		for _, e in ipairs(extras.luces) do
-			e.l.Brightness = e.b * (1 + e.a * math.sin(tN * 2.3 + e.f) + e.a * 0.5 * math.sin(tN * 5.1 + e.f * 2))
-		end
-	end
-end
-
--- polvo bajo los pies al caminar
-local polvoParte = parte(BLOQUE, Vector3.new(1, 0.2, 1), CFrame.new(P(0, -500, 0)), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, 1)
-local emPolvo = Instance.new("ParticleEmitter")
-emPolvo.Texture = "rbxasset://textures/particles/smoke_main.dds"
-emPolvo.Rate = 0
-emPolvo.Lifetime = NumberRange.new(0.7, 1.1)
-emPolvo.Speed = NumberRange.new(0.4, 1.2)
-emPolvo.SpreadAngle = Vector2.new(60, 60)
-emPolvo.Acceleration = Vector3.new(0, 0.4, 0)
-emPolvo.EmissionDirection = Enum.NormalId.Top
-emPolvo.Rotation = NumberRange.new(0, 360)
-emPolvo.Size = NumberSequence.new({
-	NumberSequenceKeypoint.new(0, 0.25),
-	NumberSequenceKeypoint.new(1, 0.9),
-})
-emPolvo.Transparency = NumberSequence.new({
-	NumberSequenceKeypoint.new(0, 0.82),
-	NumberSequenceKeypoint.new(1, 1),
-})
-emPolvo.Color = ColorSequence.new(Color3.fromRGB(235, 240, 248))
-emPolvo.Parent = polvoParte
-
-----------------------------------------------------------------------
--- AVES: animacion (alas de dos tramos, planeo y aleteo)
-----------------------------------------------------------------------
-local function animarAla(cf, lado, alaIn, alaOut, flap, flap2)
-	local raiz = cf * CFrame.new(lado * 0.2, 0.05, -0.05) * CFrame.Angles(0, -lado * 0.12, lado * flap)
-	alaIn.CFrame = raiz * CFrame.new(lado * 0.55, 0, 0)
-	local codo = raiz * CFrame.new(lado * 1.1, 0, 0) * CFrame.Angles(0, -lado * 0.28, lado * flap2)
-	alaOut.CFrame = codo * CFrame.new(lado * 0.5, 0, 0.04)
-end
-
-local function animarPajaros(tN)
-	for _, b in ipairs(pajaros) do
-		local x = ((b.x0 + tN * b.vel + 260) % 520) - 260
-		local planeo = 0.5 + 0.5 * math.sin(tN * 0.4 + b.fase * 2)
-		local amp = 0.2 + 0.45 * planeo
-		local ang = tN * 8 + b.fase
-		local flap = math.sin(ang) * amp
-		local flap2 = math.sin(ang - 0.7) * amp * 0.9 + flap * 0.3
-		local pos = P(x, b.y + math.sin(tN * 1.3 + b.fase) * 1.2 + flap * 0.25, b.z)
-		local cf = CFrame.lookAt(pos, pos + Vector3.new(1, 0, 0)) * CFrame.Angles(flap * 0.06, 0, 0)
-		for _, r in ipairs(b.rig) do
-			r[1].CFrame = cf * r[2]
-		end
-		animarAla(cf, -1, b.aIL, b.aOL, flap, flap2)
-		animarAla(cf, 1, b.aIR, b.aOR, flap, flap2)
-	end
-end
-
-----------------------------------------------------------------------
--- PERRITO (modelo por partes, animado a mano)
-----------------------------------------------------------------------
-local perro = {
-	pos = P(0, -3000, 0), yaw = 0, velS = 0, fase = 0, colaFase = 0,
-	modo = "oculto", tModo = 0, L = 0, adelante = 1.2, lado = 1.9,
-	p0 = Vector3.new(), p1 = Vector3.new(), durSalto = 1, S = 0.85,
-}
-local partesPerro = {}
-local HP = {}
-
-local function crearAliento(padre)
-	local em = Instance.new("ParticleEmitter")
-	em.Texture = "rbxasset://textures/particles/smoke_main.dds"
-	em.Rate = 0
-	em.Lifetime = NumberRange.new(0.8, 1.2)
-	em.Speed = NumberRange.new(0.6, 1.1)
-	em.EmissionDirection = Enum.NormalId.Front
-	em.SpreadAngle = Vector2.new(20, 20)
-	em.Acceleration = Vector3.new(0, 0.5, 0)
-	em.Drag = 2
-	em.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 0.5) })
-	em.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 1) })
-	em.Color = ColorSequence.new(Color3.new(1, 1, 1))
-	em.Parent = padre
-	return em
-end
-
-do
-	local S = perro.S
-	local PELO = Color3.fromRGB(214, 158, 92)
-	local PELO_OSC = Color3.fromRGB(168, 112, 60)
-	local CLARO = Color3.fromRGB(240, 214, 168)
-	local BLANCO = Color3.fromRGB(246, 240, 228)
-	local NEGRO = Color3.fromRGB(24, 22, 22)
-	local ROJO = Color3.fromRGB(196, 48, 52)
-	local ORO = Color3.fromRGB(235, 195, 80)
-	local ROSA = Color3.fromRGB(232, 120, 132)
-
-	HP.cuerpo = Vector3.new(0, 0.95, 0) * S
-	HP.cabeza = Vector3.new(0, 1.2, -0.8) * S
-	HP.cola = Vector3.new(0, 1.15, 0.95) * S
-	HP.orejaI = Vector3.new(-0.27, 1.72, -1.0) * S
-	HP.orejaD = Vector3.new(0.27, 1.72, -1.0) * S
-	HP.pFI = Vector3.new(-0.28, 0.65, -0.5) * S
-	HP.pFD = Vector3.new(0.28, 0.65, -0.5) * S
-	HP.pTI = Vector3.new(-0.28, 0.65, 0.6) * S
-	HP.pTD = Vector3.new(0.28, 0.65, 0.6) * S
-
-	local function pp(hueso, forma, tam, pos, rot, color, mat, transp)
-		local cf = CFrame.new(pos * S) * (rot or CFrame.new())
-		local p = parte(forma, tam * S, CFrame.new(P(0, -3000, 0)), color, mat or Enum.Material.SmoothPlastic, transp)
-		table.insert(partesPerro, { part = p, hueso = hueso, cf = cf })
-		return p
-	end
-
-	-- tronco
-	pp("cuerpo", BLOQUE, Vector3.new(0.8, 0.7, 1.2), Vector3.new(0, 0.95, 0.05), nil, PELO)
-	pp("cuerpo", BLOQUE, Vector3.new(0.84, 0.22, 0.9), Vector3.new(0, 0.71, 0), nil, BLANCO)
-	pp("cuerpo", BOLA, Vector3.new(0.9, 0.9, 0.9), Vector3.new(0, 0.98, -0.55), nil, PELO)
-	pp("cuerpo", BOLA, Vector3.new(0.55, 0.55, 0.55), Vector3.new(0, 0.9, -0.86), nil, BLANCO)
-	pp("cuerpo", BOLA, Vector3.new(0.92, 0.92, 0.92), Vector3.new(0, 0.97, 0.62), nil, PELO)
-	pp("cuerpo", BLOQUE, Vector3.new(0.34, 0.06, 1.4), Vector3.new(0, 1.32, 0.05), nil, PELO_OSC)
-	-- collar rojo con chapita dorada
-	pp("cuerpo", CILINDRO, Vector3.new(0.14, 0.78, 0.78), Vector3.new(0, 1.2, -0.8), CFrame.Angles(0.7, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), ROJO)
-	pp("cuerpo", BOLA, Vector3.new(0.13, 0.13, 0.13), Vector3.new(0, 0.74, -1.05), nil, ORO, Enum.Material.Metal)
-
-	-- cabeza
-	pp("cabeza", BOLA, Vector3.new(0.78, 0.78, 0.78), Vector3.new(0, 1.4, -1.05), nil, PELO)
-	pp("cabeza", BLOQUE, Vector3.new(0.36, 0.3, 0.5), Vector3.new(0, 1.3, -1.45), nil, CLARO)
-	pp("cabeza", BOLA, Vector3.new(0.18, 0.18, 0.18), Vector3.new(0, 1.37, -1.71), nil, NEGRO)
-	pp("cabeza", BOLA, Vector3.new(0.12, 0.12, 0.12), Vector3.new(-0.2, 1.5, -1.33), nil, NEGRO)
-	pp("cabeza", BOLA, Vector3.new(0.12, 0.12, 0.12), Vector3.new(0.2, 1.5, -1.33), nil, NEGRO)
-	perro.lengua = pp("cabeza", BLOQUE, Vector3.new(0.13, 0.04, 0.24), Vector3.new(0, 1.13, -1.5), CFrame.Angles(-0.25, 0, 0), ROSA, nil, 1)
-
-	perro.aliento = crearAliento(perro.lengua)
-	perro.ladrido = Instance.new("Sound")
-	perro.ladrido.Name = "Ladrido"
-	perro.ladrido.SoundId = "rbxassetid://" .. SONIDO_LADRIDO_ID
-	perro.ladrido.Volume = 1
-	perro.ladrido.RollOffMinDistance = 30
-	perro.ladrido.Parent = perro.lengua
-	task.spawn(function()
-		pcall(function()
-			game:GetService("ContentProvider"):PreloadAsync({ perro.ladrido })
-		end)
-	end)
-
-	-- orejas
-	pp("orejaI", BLOQUE, Vector3.new(0.2, 0.44, 0.15), Vector3.new(-0.33, 1.86, -1.0), CFrame.Angles(0, 0, 0.35), PELO_OSC)
-	pp("orejaD", BLOQUE, Vector3.new(0.2, 0.44, 0.15), Vector3.new(0.33, 1.86, -1.0), CFrame.Angles(0, 0, -0.35), PELO_OSC)
-
-	-- cola con la punta blanca
-	pp("cola", BLOQUE, Vector3.new(0.14, 0.14, 0.62), Vector3.new(0, 1.15, 1.26), nil, PELO)
-	pp("cola", BOLA, Vector3.new(0.19, 0.19, 0.19), Vector3.new(0, 1.15, 1.6), nil, BLANCO)
-
-	-- patas con calcetines blancos
-	for nombre, x in pairs({ pFI = -0.28, pFD = 0.28, pTI = -0.28, pTD = 0.28 }) do
-		local z = (nombre == "pFI" or nombre == "pFD") and -0.5 or 0.6
-		pp(nombre, BLOQUE, Vector3.new(0.22, 0.42, 0.24), Vector3.new(x, 0.44, z), nil, PELO)
-		pp(nombre, BLOQUE, Vector3.new(0.19, 0.24, 0.21), Vector3.new(x, 0.17, z), nil, BLANCO)
-		pp(nombre, BLOQUE, Vector3.new(0.26, 0.1, 0.34), Vector3.new(x, 0.05, z - 0.05), nil, BLANCO)
-	end
-end
-
-local function hueso(padre, pivote, D)
-	return padre * CFrame.new(pivote) * D * CFrame.new(-pivote)
-end
-
-local function animarPerro(dt, tN)
-	if perro.modo == "oculto" then
-		return
-	end
-	local S = perro.S
-	local ahora = os.clock()
-	local sueloY = CENTRO.Y + 0.1
-	local salto, pS = 0, 0
-	local prep, agacha = 0, 0
-
-	if perro.modo == "seguir" then
-		perro.L = 0
-		local dir = av.dirV
-		local lado = Vector3.new(dir.Z, 0, -dir.X)
-		local pies = Vector3.new(av.pos.X, sueloY, av.pos.Z)
-		local objetivo = pies + dir * perro.adelante + lado * perro.lado
-		local d = Vector3.new(objetivo.X - perro.pos.X, 0, objetivo.Z - perro.pos.Z)
-		local dist = d.Magnitude
-		local v = math.clamp((dist - 0.12) * 2.2, 0, 4.6)
-		-- velocidad como vector suavizado: curvas naturales en vez de giros y frenadas bruscas
-		perro.vel = perro.vel or Vector3.new()
-		local deseada = (dist > 0.001) and (d.Unit * v) or Vector3.new()
-		perro.vel = perro.vel + (deseada - perro.vel) * (1 - math.exp(-dt * 6))
-		local base = Vector3.new(perro.pos.X, sueloY, perro.pos.Z)
-		perro.pos = base + perro.vel * dt
-		perro.velS = perro.vel.Magnitude
-		local yawObj = nil
-		if perro.velS > 0.5 then
-			yawObj = yawHacia(perro.vel.Unit)
-		else
-			local h = Vector3.new(pies.X - perro.pos.X, 0, pies.Z - perro.pos.Z)
-			if h.Magnitude > 0.05 then
-				yawObj = yawHacia(h.Unit)
-			end
-		end
-		if yawObj then
-			perro.yaw = perro.yaw + difAng(perro.yaw, yawObj) * (1 - math.exp(-dt * 5.5))
-		end
-	elseif perro.modo == "salto" then
-		perro.L = 0
-		pS = math.clamp((ahora - perro.tModo) / perro.durSalto, 0, 1)
-		salto = 1
-		local pe = pS * 0.6 + sua3(pS) * 0.4
-		local base = perro.p0:Lerp(perro.p1, pe)
-		perro.pos = base + Vector3.new(0, 4 * 1.1 * pS * (1 - pS), 0)
-		perro.velS = 2.5 * math.sin(math.pi * pS)
-		agacha = 1 - sua3(pS / 0.25)
-		prep = 1 - sua3(pS / 0.3)
-		local h = Vector3.new(perro.p1.X - perro.p0.X, 0, perro.p1.Z - perro.p0.Z)
-		if h.Magnitude > 0.05 then
-			perro.yaw = perro.yaw + difAng(perro.yaw, yawHacia(h.Unit)) * (1 - math.exp(-dt * 10))
-		end
-		if pS >= 1 then
-			perro.modo = "acostado"
-			perro.tModo = ahora
-			perro.velS = 0
-		end
-	elseif perro.modo == "preparar" then
-		-- antes de subir: se frena, mueve la cola, la cabecita, ladra y se agacha para tomar impulso
-		perro.L = 0
-		local tp = ahora - perro.tModo
-		-- se coloca al costado de la banca, sin estorbar al avatar que se esta sentando
-		local dEsp = Vector3.new(perro.espera.X - perro.pos.X, 0, perro.espera.Z - perro.pos.Z)
-		local distEsp = dEsp.Magnitude
-		local velObj = (distEsp > 0.05) and dEsp.Unit * math.clamp((distEsp - 0.05) * 2.5, 0, 3) or Vector3.new()
-		local velAct = perro.vel or Vector3.new()
-		perro.vel = velAct + (velObj - velAct) * (1 - math.exp(-dt * 6))
-		perro.pos = Vector3.new(perro.pos.X, sueloY, perro.pos.Z) + perro.vel * dt
-		perro.velS = perro.vel.Magnitude
-		prep = sua3(tp / 0.35)
-		agacha = sua3((tp - 1.05) / 0.5)
-		local h = Vector3.new(perro.p1.X - perro.pos.X, 0, perro.p1.Z - perro.pos.Z)
-		if perro.velS > 0.5 then
-			perro.yaw = perro.yaw + difAng(perro.yaw, yawHacia(perro.vel.Unit)) * (1 - math.exp(-dt * 6))
-		elseif h.Magnitude > 0.05 then
-			perro.yaw = perro.yaw + difAng(perro.yaw, yawHacia(h.Unit)) * (1 - math.exp(-dt * 6))
-		end
-		if not perro.ladrado and tp >= 0.55 then
-			perro.ladrado = true
-			perro.tLad = ahora
-			if perro.ladrido then
-				perro.ladrido:Play()
-			end
-		end
-		if tp >= perro.durPrep then
-			perro.p0 = perro.pos
-			perro.modo = "salto"
-			perro.tModo = ahora
-		end
-	else
-		perro.pos = perro.p1
-		perro.velS = 0
-		perro.L = sua3((ahora - perro.tModo - 0.25) / 1.5)
-		perro.yaw = perro.yaw + difAng(perro.yaw, math.pi / 2) * (1 - math.exp(-dt * 4))
-	end
-
-	perro.fase = perro.fase + dt * 4.6 * perro.velS
-	local f = perro.fase
-	local A = math.clamp(perro.velS / VEL_CAMINAR, 0, 1.4)
-	local L = perro.L
-	local s = math.sin(f)
-	local respira = math.sin(tN * 2.2)
-	local kick = perro.tLad and math.exp(-(ahora - perro.tLad) * 9) or 0
-	local imp = (perro.modo == "acostado") and math.exp(-(ahora - perro.tModo) * 6) or 0
-
-	-- tronco: rebote al trotar, cabeceo en el salto, baja al acostarse
-	local rebote = math.abs(math.sin(tN * 8)) * 0.035 * prep
-	local cuerpoD = CFrame.new(0, (math.abs(s) * 0.05 * A - 0.42 * L + respira * 0.012 * (0.4 + L) - 0.11 * agacha - 0.1 * imp + rebote + 0.04 * kick) * S, 0)
-		* CFrame.Angles(salto * 0.4 * math.cos(math.pi * pS) * math.max(0, math.sin(math.pi * pS)) ^ 0.6 + math.sin(2 * f) * 0.03 * A - 0.18 * agacha + 0.12 * kick - 0.06 * imp, 0, s * 0.03 * A)
-
-	-- patas: trote en diagonal, salto con patas estiradas, acostado con patas dobladas
-	local function angPata(paso, enSalto, tumbada)
-		local a = paso * (1 - salto) + enSalto * salto
-		return a * (1 - L) + tumbada * L
-	end
-	local arco = math.sin(math.pi * pS)
-	local sw = s * 0.55 * A
-	local patita = math.sin(tN * 9) * 0.12 * prep * (1 - agacha)
-	local aFI = angPata(sw, 0.85 * arco, 1.45) + 0.4 * agacha + patita
-	local aFD = angPata(-sw, 0.85 * arco, 1.45) + 0.4 * agacha - patita
-	local aTI = angPata(-sw, -0.7 * arco, 1.45) - 0.2 * agacha
-	local aTD = angPata(sw, -0.7 * arco, 1.45) - 0.2 * agacha
-	local caida = CFrame.new(0, -0.5 * L * S, 0)
-
-	-- cabeza: mira a los lados, apoya el hocico en las patas al acostarse
-	local giro = (math.sin(tN * 0.6 + 1) * 0.35 * (1 - L) + math.sin(tN * 0.35) * 0.15 * L) * (1 - math.min(A, 1)) * (1 - prep)
-		+ prep * 0.28 * math.sin(tN * 4.2)
-	local cabezaD = CFrame.new(0, -0.5 * L * S, 0)
-		* CFrame.Angles(-0.28 * L + math.sin(2 * f) * 0.05 * A + salto * 0.2 * arco + prep * (0.22 + 0.1 * math.sin(tN * 9)) + 0.3 * kick, giro, math.sin(tN * 0.4) * 0.08 * (1 - prep) + prep * 0.24 * math.sin(tN * 5.5))
-
-	-- cola: mueve rapido si esta contento, lento si esta acostado
-	perro.colaFase = perro.colaFase + dt * ((7 + 6 * A + 11 * prep) * (1 - L) + 2 * L)
-	local wag = math.sin(perro.colaFase) * (0.55 * (1 - L) + 0.2 * L + 0.4 * prep)
-	local colaD = CFrame.Angles(-0.9 * (1 - L) - 0.3 * L + math.sin(2 * f) * 0.12 * A - 0.25 * prep * (1 - L), wag, 0)
-
-	-- orejas: hacia atras al correr, caidas al acostarse, con tics ocasionales
-	local tI = math.max(0, math.sin(tN * 1.7)) ^ 12 * 0.3
-	local tD = math.max(0, math.sin(tN * 1.3 + 2)) ^ 12 * 0.3
-	local orejaI = CFrame.Angles(0.15 * A + 0.3 * L - 0.2 * prep + tI + math.sin(2 * f + 1) * 0.07 * A, 0, 0)
-	local orejaD = CFrame.Angles(0.15 * A + 0.3 * L - 0.2 * prep + tD + math.sin(2 * f + 1.3) * 0.07 * A, 0, 0)
-
-	local R = CFrame.new(perro.pos) * CFrame.Angles(0, perro.yaw, 0)
-	local cuerpo = hueso(R, HP.cuerpo, cuerpoD)
-	local cabeza = hueso(cuerpo, HP.cabeza, cabezaD)
-	local huesos = {
-		cuerpo = cuerpo,
-		cabeza = cabeza,
-		cola = hueso(cuerpo, HP.cola, colaD),
-		orejaI = hueso(cabeza, HP.orejaI, orejaI),
-		orejaD = hueso(cabeza, HP.orejaD, orejaD),
-		pFI = hueso(R, HP.pFI, caida * CFrame.Angles(aFI, 0, 0)),
-		pFD = hueso(R, HP.pFD, caida * CFrame.Angles(aFD, 0, 0)),
-		pTI = hueso(R, HP.pTI, caida * CFrame.Angles(aTI, 0, 0)),
-		pTD = hueso(R, HP.pTD, caida * CFrame.Angles(aTD, 0, 0)),
-	}
-	for _, e in ipairs(partesPerro) do
-		e.part.CFrame = huesos[e.hueso] * e.cf
-	end
-	perro.lengua.Transparency = (A > 0.25 or prep > 0.3 or (L > 0.9 and math.sin(tN * 0.7) > 0.3)) and 0 or 1
-	if perro.aliento then
-		perro.aliento.Rate = (math.sin(tN * 1.9) > 0.8) and 22 or 0
-	end
-end
-
-local function aparecerPerro()
-	perro.pos = Vector3.new(av.pos.X - 1.6, CENTRO.Y + 0.1, av.pos.Z - 1.9)
-	perro.yaw = -math.pi / 2
-	perro.modo = "seguir"
-end
-
-local function saltarBanca()
-	perro.p0 = perro.pos
-	perro.p1 = Vector3.new(CENTRO.X + BX + 2.65, CENTRO.Y + ALTO_ASIENTO + 0.02, CENTRO.Z + BZ)
-	perro.durSalto = 1.1
-	perro.durPrep = 1.6
-	perro.ladrado = false
-	perro.espera = Vector3.new(CENTRO.X + BX + 3.2, CENTRO.Y + 0.1, CENTRO.Z + BZ - 1.4)
-	perro.tModo = os.clock()
-	perro.modo = "preparar"
-end
-
-----------------------------------------------------------------------
--- GORRO ALADO (alas que aletean al caminar)
-----------------------------------------------------------------------
-local gorro = nil
-do
-	local cabeza = av.modelo:FindFirstChild("Head")
-	if not MOSTRAR_GORRO then
-		-- gorro desactivado (parecia una paloma sobre la cabeza)
-	elseif cabeza and cabeza:IsA("BasePart") then
-		local hs = cabeza.Size.Y / 1.2
-		local grupo = Instance.new("Folder")
-		grupo.Name = "GorroAlado"
-		grupo.Parent = av.modelo
-		local AZUL = Color3.fromRGB(44, 88, 168)
-		local AZUL_OSC = Color3.fromRGB(30, 62, 124)
-		local ORO = Color3.fromRGB(235, 195, 80)
-
-		local function gp(forma, tam, color, mat, transp)
-			local p = Instance.new("Part")
-			p.Shape = forma
-			p.Size = tam * hs
-			p.Color = color
-			p.Material = mat
-			p.Transparency = transp or 0
-			p.Anchored = false
-			p.CanCollide = false
-			p.CanQuery = false
-			p.CanTouch = false
-			p.Massless = true
-			p.CastShadow = true
-			p.Parent = grupo
-			return p
-		end
-		local function soldar(p0, p1, c0)
-			p1.CFrame = p0.CFrame * c0
-			local w = Instance.new("Weld")
-			w.Part0 = p0
-			w.Part1 = p1
-			w.C0 = c0
-			w.Parent = p1
-			return w
-		end
-
-		soldar(cabeza, gp(BOLA, Vector3.new(1.45, 1.45, 1.45), AZUL, Enum.Material.Fabric), CFrame.new(0, 0.6 * hs, 0.1 * hs))
-		soldar(cabeza, gp(CILINDRO, Vector3.new(0.08, 1.95, 1.95), AZUL_OSC, Enum.Material.Fabric), CFrame.new(0, 0.42 * hs, 0.02 * hs) * CFrame.Angles(0, 0, math.pi / 2))
-		soldar(cabeza, gp(CILINDRO, Vector3.new(0.16, 1.56, 1.56), ORO, Enum.Material.Metal), CFrame.new(0, 0.52 * hs, 0.08 * hs) * CFrame.Angles(0, 0, math.pi / 2))
-		soldar(cabeza, gp(BOLA, Vector3.new(0.16, 0.16, 0.16), ORO, Enum.Material.Metal), CFrame.new(0, 1.3 * hs, 0.1 * hs))
-
-		local function crearAla(lado)
-			local raiz = gp(BLOQUE, Vector3.new(0.1, 0.1, 0.1), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, 1)
-			local w = soldar(cabeza, raiz, CFrame.new(lado * 0.68 * hs, 0.52 * hs, 0.14 * hs))
-			soldar(raiz, gp(BOLA, Vector3.new(0.2, 0.2, 0.2), ORO, Enum.Material.Metal), CFrame.new())
-			local largos = { 1.75, 1.55, 1.3, 1.05 }
-			local angs = { 0.5, 0.22, -0.06, -0.34 }
-			local zs = { -0.02, 0.06, 0.14, 0.22 }
-			for i = 1, 4 do
-				local l = largos[i]
-				local color = (i % 2 == 0) and Color3.fromRGB(232, 236, 246) or Color3.fromRGB(250, 250, 252)
-				local pluma = gp(BLOQUE, Vector3.new(l, 0.05, 0.36), color, Enum.Material.SmoothPlastic)
-				soldar(raiz, pluma, CFrame.Angles(0, 0, lado * angs[i]) * CFrame.new(lado * (l / 2 + 0.05) * hs, 0, zs[i] * hs))
-			end
-			return w
-		end
-
-		gorro = {
-			wI = crearAla(-1), wD = crearAla(1), fase = 0,
-			ax = 0.68 * hs, ay = 0.52 * hs, az = 0.14 * hs,
-		}
-	else
-		warn("[Escena] No se encontro la cabeza del avatar, no se pone el gorro")
-	end
-end
-
-local alientoAv = nil
-do
-	local cab = av.modelo:FindFirstChild("Head")
-	if cab and cab:IsA("BasePart") then
-		alientoAv = crearAliento(cab)
-	end
-end
-
-local function animarGorro(dt)
-	if not gorro then
-		return
-	end
-	local A = math.clamp(av.velS / VEL_CAMINAR, 0, 1)
-	gorro.fase = gorro.fase + dt * (2.2 + 11 * A)
-	local base = 0.32 - 0.14 * av.w.sentado
-	local flap = base + math.sin(gorro.fase) * (0.07 + 0.45 * A)
-	gorro.wI.C0 = CFrame.new(-gorro.ax, gorro.ay, gorro.az) * CFrame.Angles(0, 0, -flap)
-	gorro.wD.C0 = CFrame.new(gorro.ax, gorro.ay, gorro.az) * CFrame.Angles(0, 0, flap)
-end
-
-----------------------------------------------------------------------
--- VISITANTE (modelo externo: pasa corriendo, se frena, los mira y se va)
-----------------------------------------------------------------------
-local visitante = nil
-do
-	local ok, cargados = pcall(function()
-		return game:GetObjects("rbxassetid://" .. VISITANTE_ID)
-	end)
-	if ok and cargados and #cargados > 0 then
-		local m = Instance.new("Model")
-		m.Name = "Visitante"
-		for _, o in ipairs(cargados) do
-			if o:IsA("Model") or o:IsA("BasePart") or o:IsA("Folder") or o:IsA("Accessory") then
-				o.Parent = m
-			else
-				o:Destroy()
-			end
-		end
-		local quitar = {}
-		local hayPartes = false
-		for _, d in ipairs(m:GetDescendants()) do
-			if d:IsA("BasePart") then
-				hayPartes = true
-				d.Anchored = true
-				d.CanCollide = false
-				d.CanQuery = false
-				d.CanTouch = false
-			elseif d:IsA("LuaSourceContainer") then
-				table.insert(quitar, d)
-			elseif d:IsA("Humanoid") then
-				d.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-			end
-		end
-		for _, s in ipairs(quitar) do
-			s:Destroy()
-		end
-		if hayPartes then
-			local cf0 = m:GetBoundingBox()
-			m.WorldPivot = CFrame.new(cf0.Position)
-			if VISITANTE_ESCALA ~= 1 then
-				pcall(function()
-					m:ScaleTo(VISITANTE_ESCALA)
-				end)
-			end
-			local bbCF, bbS = m:GetBoundingBox()
-			local offset = m:GetPivot().Position.Y - (bbCF.Position.Y - bbS.Y / 2)
-			m:PivotTo(CFrame.new(P(0, -3000, 0)))
-			m.Parent = carpeta
-			visitante = { modelo = m, offset = offset, activo = false, t0 = 0, yaw = 0 }
-			print(string.format("[Escena] Visitante cargado, tamano %.1f x %.1f x %.1f", bbS.X, bbS.Y, bbS.Z))
-		else
-			m:Destroy()
-			warn("[Escena] El modelo del visitante no trae partes visibles: " .. tostring(VISITANTE_ID))
-		end
-	else
-		warn("[Escena] No se pudo cargar el visitante " .. tostring(VISITANTE_ID) .. ": " .. tostring(cargados))
-	end
-end
-
-local VIS_DZ = -3.6
-local VIS_ATRAS, VIS_ADELANTE, VIS_SALIDA = 30, 12, 45
-local VIS_T1, VIS_T2, VIS_T3 = 1.5, 2.6, 1.3
-local tLinea = nil
-local visitanteHecho = false
-
-local function iniciarVisitante()
-	if not visitante then
-		return
-	end
-	local y = CENTRO.Y + 0.1 + visitante.offset
-	local z = CENTRO.Z + Z_CAMINO + VIS_DZ
-	local xa = av.pos.X
-	visitante.A = Vector3.new(xa - VIS_ATRAS, y, z)
-	visitante.B = Vector3.new(xa + VIS_ADELANTE, y, z)
-	visitante.C = Vector3.new(xa + VIS_ADELANTE + VIS_SALIDA, y, z)
-	visitante.yaw = yawHacia(visitante.B - visitante.A)
-	visitante.t0 = os.clock()
-	visitante.activo = true
-end
-
-local function animarVisitante(dt)
-	if not visitante then
-		return
-	end
-	if not visitante.activo then
-		if not visitanteHecho and tLinea and os.clock() - tLinea >= VISITANTE_APARECE then
-			visitanteHecho = true
-			iniciarVisitante()
-		end
-		return
-	end
-	local tv = os.clock() - visitante.t0
-	local A, B, C = visitante.A, visitante.B, visitante.C
-	local pos, yawObj
-	if tv < VIS_T1 then
-		-- pasa corriendo junto al avatar y al perro y va frenando hasta quedar parado
-		local u = tv / VIS_T1
-		pos = A:Lerp(B, 1 - (1 - u) ^ 2.2)
-		yawObj = yawHacia(B - A)
-	elseif tv < VIS_T1 + VIS_T2 then
-		-- parado, mirando al avatar mientras se acerca
-		pos = B
-		local h = Vector3.new(av.pos.X - B.X, 0, av.pos.Z - B.Z)
-		yawObj = (h.Magnitude > 0.05) and yawHacia(h.Unit) or visitante.yaw
-	else
-		-- se da vuelta y sale rapido hacia el otro lado
-		local u = (tv - VIS_T1 - VIS_T2) / VIS_T3
-		if u >= 1 then
-			visitante.activo = false
-			visitante.modelo:PivotTo(CFrame.new(P(0, -3000, 0)))
-			return
-		end
-		pos = B:Lerp(C, u ^ 2.2)
-		yawObj = yawHacia(C - B)
-	end
-	visitante.yaw = visitante.yaw + difAng(visitante.yaw, yawObj) * (1 - math.exp(-dt * 9))
-	visitante.modelo:PivotTo(CFrame.new(pos) * CFrame.Angles(0, visitante.yaw + math.rad(VISITANTE_GIRO), 0))
-end
-
-----------------------------------------------------------------------
--- CAMARA Y UTILIDADES
-----------------------------------------------------------------------
-local function dtFrame()
-	local ahora = os.clock()
-	local dt = math.min(ahora - ultimo, 0.1)
-	ultimo = ahora
-	return dt
-end
-
-local function suave(x)
-	return TweenService:GetValue(math.clamp(x, 0, 1), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-end
-
-local camPosS, camMiraS
-local primerFrame = true
-
-local function camaraLibre(dt, pos, mira, fov, amp, k, roll)
-	local t = os.clock() - T0
-	if primerFrame or not k then
-		camPosS, camMiraS = pos, mira
-		primerFrame = false
-	else
-		local f = 1 - math.exp(-dt * k)
-		camPosS = camPosS:Lerp(pos, f)
-		camMiraS = camMiraS:Lerp(mira, f)
-	end
-	local ruido = Vector3.new(
-		math.noise(t * 0.4, 1.7, 0),
-		math.noise(t * 0.4, 8.3, 0),
-		math.noise(t * 0.4, 15.1, 0)
-	) * (amp * 0.12)
-	local rx = math.noise(t * 0.5, 3.1, 0) * 0.008 * amp
-	local ry = math.noise(t * 0.5, 9.7, 0) * 0.008 * amp
-	camara.CFrame = CFrame.lookAt(camPosS + ruido, camMiraS) * CFrame.Angles(rx, ry, roll or 0)
-	camara.FieldOfView = fov
-end
-
-local sonidoEscena = Instance.new("Sound")
-sonidoEscena.Name = "SonidoEscena"
-sonidoEscena.SoundId = "rbxassetid://" .. SONIDO_ID
-sonidoEscena.Looped = true
-sonidoEscena.Volume = VOL_ARBOL
-sonidoEscena.Parent = gui
-
-local function limpiarMundo()
-	if animConn then
-		animConn:Disconnect()
-		animConn = nil
-	end
-	if sonidoEscena then
-		sonidoEscena:Stop()
-		sonidoEscena:Destroy()
-		sonidoEscena = nil
-	end
-	carpeta:Destroy()
-	for _, i in ipairs(efectos) do
-		i:Destroy()
-	end
-	for p, v in pairs(luzOriginal) do
-		Lighting[p] = v
-	end
-	for _, o in ipairs(ocultos) do
-		o.Parent = Lighting
-	end
-	camara.CameraType = Enum.CameraType.Custom
-	camara.FieldOfView = fovOriginal
-	local hum = jugador.Character and jugador.Character:FindFirstChildOfClass("Humanoid")
-	if hum then
-		camara.CameraSubject = hum
-	end
-	restaurarGuis()
-end
-
-_G.SalirEscena = function()
-	activa = false
-	limpiarMundo()
-	gui:Destroy()
-end
-
-----------------------------------------------------------------------
--- ANIMACION CONTINUA (no depende de los cortes de camara)
-----------------------------------------------------------------------
-do
-	local avisado = false
-	local avisado2 = false
-	local contador = 0
-	local tCb = os.clock()
-	animConn = RunService.RenderStepped:Connect(function()
-		if not activa then
-			return
-		end
-		local ahora = os.clock()
-		local dtCb = math.min(ahora - tCb, 0.1)
-		tCb = ahora
-
-		local ok, err = pcall(animarCuerpo, av)
-		if not ok and not avisado then
-			avisado = true
-			warn("[Escena] Error en la animacion: " .. tostring(err))
-		end
-
-		polvoParte.CFrame = CFrame.new(av.pos.X, av.pos.Y - av.abajo + 0.15, av.pos.Z)
-		emPolvo.Rate = (not av.llego and av.velS > 0.6) and 7 or 0
-
-		local tN = ahora - T0
-		contador = contador + 1
-		if contador % 3 == 0 then
-			for _, n in ipairs(nubes) do
-				n.p.CFrame = n.cf + Vector3.new(tN * n.v, 0, 0)
-			end
-		end
-		local ok2, err2 = pcall(function()
-			animarPerro(dtCb, tN)
-			animarGorro(dtCb)
-			if alientoAv then
-				alientoAv.Rate = (math.sin(tN * 1.5 + 1) > 0.82) and 22 or 0
-			end
-			animarPajaros(tN)
-			animarVisitante(dtCb)
-			extras.animar(tN, contador)
-		end)
-		if not ok2 and not avisado2 then
-			avisado2 = true
-			warn("[Escena] Error al animar perro/gorro/aves: " .. tostring(err2))
-		end
-
-		if dof then
-			local objetivo = enfocarAvatar and (camara.CFrame.Position - av.pos).Magnitude or focoFijo
-			objetivo = math.clamp(objetivo, 2, 400)
-			dof.FocusDistance = dof.FocusDistance + (objetivo - dof.FocusDistance) * (1 - math.exp(-dtCb * 4))
-		end
-	end)
-end
-
-----------------------------------------------------------------------
--- MOVIMIENTO Y BUCLES
-----------------------------------------------------------------------
-local function iniciarCaminata(a, destino)
-	local d = Vector3.new(destino.X - a.pos.X, 0, destino.Z - a.pos.Z)
-	a.destino = Vector3.new(destino.X, a.pos.Y, destino.Z)
-	a.dirV = d.Unit
-	a.yaw = yawHacia(a.dirV)
-	a.llego = false
-	a.tInicio = os.clock()
-	a.vel = 0
-end
-
-local function pasoAvatar(a, dt)
-	if a.llego then
-		return
-	end
-	local t = os.clock() - a.tInicio
-	local restante = (a.destino - a.pos).Magnitude
-	local arranque = TweenService:GetValue(math.clamp(t / 1.5, 0, 1), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-	local v = VEL_CAMINAR * math.max(arranque, 0.05) * math.clamp(restante / 3, 0.1, 1)
-	local paso = math.min(v * dt, restante)
-	a.pos = a.pos + a.dirV * paso
-	a.vel = paso / math.max(dt, 0.001)
-	colocarAvatar(a)
-	if restante - paso <= 0.02 then
-		a.llego = true
-	end
-end
-
-local function bucle(duracion, fn)
-	local t0 = os.clock()
-	while activa do
-		RunService.RenderStepped:Wait()
-		if not activa then
-			return
-		end
-		local dt = dtFrame()
-		local t = os.clock() - t0
-		fn(dt, t)
-		if t >= duracion then
-			break
-		end
-	end
-end
-
-local function hasta(cond, fn, extra)
-	local finT = nil
-	while activa do
-		RunService.RenderStepped:Wait()
-		if not activa then
-			return
-		end
-		local dt = dtFrame()
-		fn(dt)
-		if cond() then
-			finT = finT or os.clock()
-			if os.clock() - finT >= (extra or 0) then
-				break
-			end
-		end
-	end
-end
-
-local function corte(cambio)
-	local info = TweenInfo.new(0.5, Enum.EasingStyle.Sine)
-	local tIn = TweenService:Create(fundido, info, { BackgroundTransparency = 0 })
-	tIn:Play()
-	blurCorte.Enabled = true
-	TweenService:Create(blurCorte, info, { Size = 14 }):Play()
-	tIn.Completed:Wait()
-	if not activa then
-		return
-	end
-	primerFrame = true
-	cambio()
-	TweenService:Create(fundido, info, { BackgroundTransparency = 1 }):Play()
-	local tBlur = TweenService:Create(blurCorte, info, { Size = 0 })
-	tBlur.Completed:Connect(function()
-		blurCorte.Enabled = false
-	end)
-	tBlur:Play()
-end
-
-----------------------------------------------------------------------
--- LINEA DE TIEMPO
-----------------------------------------------------------------------
-camara.CameraType = Enum.CameraType.Scriptable
-camaraLibre(0.016, P(-4, 2.2, -6), P(-16, 6, 16), 62, 1)
-tLinea = os.clock()
-sonidoEscena:Play()
-TweenService:Create(fundido, TweenInfo.new(1.5, Enum.EasingStyle.Sine), { BackgroundTransparency = 1 }):Play()
-if BARRAS_CINE then
-	local ti = TweenInfo.new(2.5, Enum.EasingStyle.Sine)
-	TweenService:Create(barraSup, ti, { Size = UDim2.fromScale(1, 0.085) }):Play()
-	TweenService:Create(barraInf, ti, { Size = UDim2.fromScale(1, 0.085) }):Play()
-end
-
--- 1) plano del arbol
-bucle(DUR_ARBOL, function(dt, t)
-	local s = suave(t / DUR_ARBOL)
-	camaraLibre(dt, P(-4, 2.2 + 0.8 * s, -6 + 3.5 * s), P(-16, 6 + 5 * s, 16), 62 - 6 * s, 1)
-end)
-if not activa then
-	return
-end
-
--- 2) el avatar entra caminando
-corte(function()
-	colocarAvatar(av)
-	iniciarCaminata(av, P(BX, 0, Z_CAMINO))
-	aparecerPerro()
-	enfocarAvatar = true
-	if dof then
-		dof.InFocusRadius = 8
-	end
-	TweenService:Create(sonidoEscena, TweenInfo.new(1.5, Enum.EasingStyle.Sine), { Volume = VOL_ANIMACION }):Play()
-end)
-if not activa then
-	return
-end
-
-hasta(function()
-	return av.llego
-end, function(dt)
-	pasoAvatar(av, dt)
-	local lx = av.pos.X - CENTRO.X
-	camaraLibre(dt, P(lx - 6, 2.1, Z_CAMINO - 6.5), P(lx + 1.8, 2.7, Z_CAMINO), 52, 0.6, 2.2)
-end, 0.6)
-if not activa then
-	return
-end
-
--- 3) se gira hacia la banca
-local yaw0 = av.yaw
-local giro0 = difAng(yaw0, math.pi)
-av.mirada = -0.12
-bucle(1.2, function(dt, t)
-	av.yaw = yaw0 + giro0 * suave(t / 1.2)
-	colocarAvatar(av)
-	camaraLibre(dt, P(BX + 4.5, 2.6, Z_CAMINO - 5), P(BX, 2.8, (Z_CAMINO + BZ) / 2), 50, 0.6, 1.8)
-end)
-if not activa then
-	return
-end
-
--- 4) duda un momento y mira a los lados
-bucle(4, function(dt, t)
-	local s = suave(t / 4)
-	if t > 0.8 and t < 2.4 then
-		av.mirY = -0.35
-	elseif t >= 2.4 and t < 3.4 then
-		av.mirY = 0.3
-	elseif t >= 3.4 then
-		av.mirY = 0
-	end
-	camaraLibre(dt, P(BX + 4.5 - 1.3 * s, 2.6 - 0.2 * s, Z_CAMINO - 5 + 1.2 * s), P(BX, 2.8, (Z_CAMINO + BZ) / 2), 50 - 3 * s, 0.6, 1.8)
-end)
-if not activa then
-	return
-end
-av.mirY = 0
-
--- 5) camina hasta la banca
-perro.adelante = 0.2
-perro.lado = 4.0
-iniciarCaminata(av, P(BX, 0, BZ - 1.8))
-hasta(function()
-	return av.llego
-end, function(dt)
-	pasoAvatar(av, dt)
-	camaraLibre(dt, P(BX + 3.3, 2.4, Z_CAMINO - 3.8), av.pos + Vector3.new(0, -0.2, 1.2), 48, 0.6, 2)
-end, 0.4)
-if not activa then
-	return
-end
-
--- 6) da la vuelta
-local yaw1 = av.yaw
-local giro1 = difAng(yaw1, 0)
-bucle(1.2, function(dt, t)
-	av.yaw = yaw1 + giro1 * suave(t / 1.2)
-	colocarAvatar(av)
-	camaraLibre(dt, P(BX + 3.3, 2.4, Z_CAMINO - 3.8), av.pos + Vector3.new(0, -0.2, 1.2), 48, 0.6, 2)
-end)
-if not activa then
-	return
-end
-
--- 7) se sienta y 8) mira a su alrededor
-do
-	local p0 = av.pos
-	local pSit = Vector3.new(
-		CENTRO.X + BX,
-		CENTRO.Y + ALTO_ASIENTO + AJUSTE_ASIENTO + av.bajoAsiento,
-		CENTRO.Z + BZ + 0.3
-	)
-	local camIni, miraIni = camPosS, camMiraS
-	local camSit = P(BX + 3.2, 2.4, -2)
-	local miraSit = P(BX, 3.2, BZ + 0.3)
-	local perroSalto = false
-	bucle(5, function(dt, t)
-		if not perroSalto and t > 0.5 then
-			perroSalto = true
-			saltarBanca()
-		end
-		local sp = suave(t / 1.8)
-		local caida = suave((t - 0.3) / 1.5)
-		av.pos = Vector3.new(p0.X, p0.Y + (pSit.Y - p0.Y) * caida, p0.Z + (pSit.Z - p0.Z) * sp)
-		av.w.sentado = suave(t / 1.8)
-		av.w.brazos = suave((t - 1.4) / 1.4)
-		av.w.cabeza = suave((t - 1.8) / 1.6)
-		colocarAvatar(av)
-		local s = suave(t / 5)
-		camaraLibre(dt, camIni:Lerp(camSit, s), miraIni:Lerp(miraSit, s), 48, 0.6)
-	end)
-	if not activa then
-		return
-	end
-
-	local posA, miraA = camPosS, camMiraS
-	local posB = pSit + Vector3.new(1.9, 0.6, -3.6)
-	local miraB = pSit + Vector3.new(0, 1.3, 0)
-	bucle(6.5, function(dt, t)
-		local s = suave(t / 6.5)
-		if t > 0.8 and t < 2.6 then
-			av.mirY = 0.5
-		elseif t >= 2.6 and t < 4.6 then
-			av.mirY = -0.45
-		elseif t >= 4.6 then
-			av.mirY = 0
-		end
-		camaraLibre(dt, posA:Lerp(posB, s), miraA:Lerp(miraB, s), 48 - 8 * s, 0.5)
-	end)
-	if not activa then
-		return
-	end
-end
-
--- 9) grua hacia el cielo + texto final
-local pos0, mira0 = camPosS, camMiraS
-local pos1 = P(BX + 5, 70, -14)
-local mira1 = P(BX, 520, BZ + 150)
-local textoMostrado = false
-enfocarAvatar = false
-focoFijo = 200
-if dof then
-	TweenService:Create(dof, TweenInfo.new(3, Enum.EasingStyle.Sine), { FarIntensity = 0.05, InFocusRadius = 250 }):Play()
-end
-bucle(9, function(dt, t)
-	local s = suave(t / 9)
-	camaraLibre(dt, pos0:Lerp(pos1, s), mira0:Lerp(mira1, s), 48 + 22 * s, 0.6)
-	if not textoMostrado and t >= 3.5 then
-		textoMostrado = true
-		TweenService:Create(
-			texto,
-			TweenInfo.new(2, Enum.EasingStyle.Sine),
-			{ TextTransparency = 0, TextStrokeTransparency = 0.4, Position = UDim2.fromScale(0.5, 0.8) }
-		):Play()
-	end
-end)
-if not activa then
-	return
-end
-
-TweenService:Create(fundido, TweenInfo.new(1.5, Enum.EasingStyle.Sine), { BackgroundTransparency = 0 }):Play()
-TweenService:Create(sonidoEscena, TweenInfo.new(1.5, Enum.EasingStyle.Sine), { Volume = 0 }):Play()
-task.wait(1.7)
-if not activa then
-	return
-end
-
-activa = false
-limpiarMundo()
-texto:Destroy()
-if REVELAR_JUEGO_AL_FINAL then
-	local revelar = TweenService:Create(fundido, TweenInfo.new(0.8, Enum.EasingStyle.Sine), { BackgroundTransparency = 1 })
-	revelar:Play()
-	revelar.Completed:Wait()
-end
-gui:Destroy()
-end
-
-local okIntro, errIntro = pcall(correrEjecutorParque)
-if not okIntro then
-    warn("EJECUTOR PARQUE: error en la animación: " .. tostring(errIntro))
-    if _G.SalirEscena then
-        pcall(_G.SalirEscena)
+--// [[DISCORD-POPUP-INICIO]]
+--// Mini GUI de Discord: aparece apenas se ejecuta el script y NO bloquea la carga de la UI.
+--// >>> Rellena estas líneas <<<
+local DISCORD_LINK  = "https://discord.gg/QqD5zZbSK"  -- link de invitación, ej: "https://discord.gg/xxxxxxx" (vacío = no se muestra el popup)
+local DISCORD_IMAGE = "111658208229411"  -- ID de Roblox ("1234567890" o "rbxassetid://1234567890") o URL directa a una imagen ("https://..."). Vacío = sin imagen
+local DISCORD_TITLE = ""  -- vacío = se traduce solo según el idioma del usuario (escribe un texto aquí solo si lo quieres fijo)
+local DISCORD_TEXT  = ""  -- vacío = se traduce solo según el idioma del usuario (escribe un texto aquí solo si lo quieres fijo)
+
+task.spawn(function()
+    local okPop, errPop = pcall(function()
+        if DISCORD_LINK == "" then
+            warn("[Discord GUI] DISCORD_LINK está vacío: no se muestra el popup.")
+            return
+        end
+
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+
+        --// Textos del popup por idioma (clave = idioma de 2 letras del locale; si no existe, se usa "en")
+        local TR = {
+            en = {title = "Join our Discord", text = "Join to stay up to date with news and updates.", copy = "Copy link", copied = "Copied!", unavailable = "Not available", close = "Close"},
+            es = {title = "Únete a nuestro Discord", text = "Entra para enterarte de las novedades y actualizaciones.", copy = "Copiar link", copied = "¡Copiado!", unavailable = "No disponible", close = "Cerrar"},
+            pt = {title = "Entre no nosso Discord", text = "Entre para ficar por dentro das novidades e atualizações.", copy = "Copiar link", copied = "Copiado!", unavailable = "Indisponível", close = "Fechar"},
+            fr = {title = "Rejoignez notre Discord", text = "Rejoignez-nous pour suivre les nouveautés et les mises à jour.", copy = "Copier le lien", copied = "Copié !", unavailable = "Indisponible", close = "Fermer"},
+            de = {title = "Tritt unserem Discord bei", text = "Tritt bei, um bei Neuigkeiten und Updates auf dem Laufenden zu bleiben.", copy = "Link kopieren", copied = "Kopiert!", unavailable = "Nicht verfügbar", close = "Schließen"},
+            it = {title = "Unisciti al nostro Discord", text = "Entra per restare aggiornato su novità e aggiornamenti.", copy = "Copia link", copied = "Copiato!", unavailable = "Non disponibile", close = "Chiudi"},
+            id = {title = "Gabung ke Discord kami", text = "Gabung untuk mengikuti kabar dan pembaruan terbaru.", copy = "Salin tautan", copied = "Tersalin!", unavailable = "Tidak tersedia", close = "Tutup"},
+            tr = {title = "Discord sunucumuza katıl", text = "Haberlerden ve güncellemelerden haberdar olmak için katıl.", copy = "Bağlantıyı kopyala", copied = "Kopyalandı!", unavailable = "Kullanılamıyor", close = "Kapat"},
+            pl = {title = "Dołącz do naszego Discorda", text = "Dołącz, aby być na bieżąco z nowościami i aktualizacjami.", copy = "Kopiuj link", copied = "Skopiowano!", unavailable = "Niedostępne", close = "Zamknij"},
+        }
+
+        --// Detección del idioma del usuario: Player.LocaleId -> RobloxLocaleId -> SystemLocaleId.
+        --// Se usa el primero cuyo idioma exista en TR; si ninguno existe, inglés.
+        local function pickLang()
+            local candidates = {}
+            pcall(function() table.insert(candidates, Players.LocalPlayer.LocaleId) end)
+            pcall(function() table.insert(candidates, game:GetService("LocalizationService").RobloxLocaleId) end)
+            pcall(function() table.insert(candidates, game:GetService("LocalizationService").SystemLocaleId) end)
+            for _, code in ipairs(candidates) do
+                if type(code) == "string" then
+                    local lang = code:lower():match("^(%a+)")
+                    if lang and TR[lang] then return lang end
+                end
+            end
+            return "en"
+        end
+        local S = TR[pickLang()]
+
+        --// Paleta = Theme por defecto de la librería (modo normal)
+        local C = {
+            Background = Color3.fromRGB(0, 0, 0),
+            Secondary  = Color3.fromRGB(12, 12, 14),
+            Stroke     = Color3.fromRGB(0, 0, 0),
+            Edge       = Color3.fromRGB(90, 90, 96),   -- borde suave (Stroke de DarkPalette) para que se vean los botones
+            Text       = Color3.fromRGB(255, 255, 255),
+            TextDim    = Color3.fromRGB(160, 160, 165),
+            Accent     = Color3.fromRGB(255, 255, 255),
+            Blurple    = Color3.fromRGB(88, 101, 242),   -- azul de Discord (#5865F2)
+            Font       = Enum.Font.GothamBold,
+        }
+
+        --// Helpers iguales a los de la librería (mk / corner / stroke)
+        local function mk(cls, props, parent)
+            local o = Instance.new(cls)
+            pcall(function() o.Selectable = false end)
+            if o:IsA("TextButton") or o:IsA("ImageButton") then
+                pcall(function() o.AutoButtonColor = false end)
+            end
+            for k, v in pairs(props) do o[k] = v end
+            if parent then o.Parent = parent end
+            return o
+        end
+        local function corner(p, r) mk("UICorner", {CornerRadius = UDim.new(0, r or 8)}, p) end
+        local function stroke(p, col, th, trans) return mk("UIStroke", {Color = col, Thickness = th or 1, Transparency = trans or 0}, p) end
+
+        --// Si se ejecuta de nuevo, quitar el popup anterior
+        pcall(function()
+            local old = LocalPlayer.PlayerGui:FindFirstChild("ZeroDiscord")
+            if old then old:Destroy() end
+        end)
+
+        local gui = mk("ScreenGui", {
+            Name = "ZeroDiscord",
+            ResetOnSpawn = false,
+            IgnoreGuiInset = true,
+            DisplayOrder = 200,   -- por encima de la UI principal (DisplayOrder 100)
+        }, LocalPlayer:WaitForChild("PlayerGui"))
+
+        local card = mk("Frame", {
+            Name = "Card",
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.new(0.5, 0, 0.5, 0),
+            Size = UDim2.new(0.85, 0, 0, 0),
+            AutomaticSize = Enum.AutomaticSize.Y,
+            BackgroundColor3 = C.Background,
+            BorderSizePixel = 0,
+        }, gui)
+        corner(card, 10)
+        stroke(card, C.Stroke, 1.5)
+        stroke(card, Color3.fromRGB(0, 0, 0), 4, 0.85)   -- "sombra", igual que la ventana principal
+        mk("UISizeConstraint", {MinSize = Vector2.new(260, 0), MaxSize = Vector2.new(340, math.huge)}, card)
+        mk("UIPadding", {
+            PaddingTop = UDim.new(0, 14), PaddingBottom = UDim.new(0, 14),
+            PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14),
+        }, card)
+        mk("UIListLayout", {
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding = UDim.new(0, 10),
+            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        }, card)
+
+        --// Imagen (opcional)
+        if DISCORD_IMAGE ~= "" then
+            local imgBox = mk("Frame", {
+                Name = "ImageBox",
+                Size = UDim2.new(0, 155, 0, 120),   -- ancho = 120 * (409/316) medido en captura, para que el borde abrace la imagen
+                BackgroundColor3 = C.Secondary,
+                BorderSizePixel = 0,
+                ClipsDescendants = true,
+                Visible = false,   -- se muestra solo cuando la imagen ya está lista
+                LayoutOrder = 1,
+            }, card)
+            corner(imgBox, 10)
+            stroke(imgBox, C.Edge, 1)
+            local img = mk("ImageLabel", {
+                Name = "Image",
+                Size = UDim2.new(1, 0, 1, 0),
+                BackgroundTransparency = 1,
+                ScaleType = Enum.ScaleType.Fit,
+                Image = "",
+            }, imgBox)
+
+            local spec = tostring(DISCORD_IMAGE)
+            if spec:match("^%d+$") then
+                img.Image = "rbxassetid://" .. spec
+                imgBox.Visible = true
+            elseif spec:match("^rbxassetid://") or spec:match("^rbxthumb://") then
+                img.Image = spec
+                imgBox.Visible = true
+            elseif spec:match("^https?://") then
+                --// Mismo patrón que usa la librería para imágenes remotas:
+                --// isfile -> game:HttpGet -> writefile -> getcustomasset
+                task.spawn(function()
+                    if type(writefile) ~= "function" or type(isfile) ~= "function" or type(getcustomasset) ~= "function" then
+                        return
+                    end
+                    local h = 0
+                    for i = 1, #spec do h = (h * 31 + spec:byte(i)) % 1000000007 end
+                    local ext = spec:match("%.(%a%a%a%a?)$") or spec:match("%.(%a%a%a%a?)%?") or "png"
+                    local cacheName = "ZeroDiscord_" .. h .. "." .. ext
+
+                    local okE, exists = pcall(isfile, cacheName)
+                    if not (okE and exists) then
+                        local okD, data = pcall(function() return game:HttpGet(spec, true) end)
+                        if not okD or type(data) ~= "string" or #data < 10 then return end
+                        if not pcall(writefile, cacheName, data) then return end
+                    end
+                    local okA, asset = pcall(getcustomasset, cacheName)
+                    if okA and type(asset) == "string" and img.Parent then
+                        img.Image = asset
+                        imgBox.Visible = true
+                    end
+                end)
+            end
+        end
+
+        --// Título y texto
+        mk("TextLabel", {
+            Name = "Title",
+            Size = UDim2.new(1, 0, 0, 0),
+            AutomaticSize = Enum.AutomaticSize.Y,
+            BackgroundTransparency = 1,
+            Text = (DISCORD_TITLE ~= "") and DISCORD_TITLE or S.title,
+            TextColor3 = C.Text,
+            Font = C.Font,
+            TextSize = 18,
+            TextWrapped = true,
+            LayoutOrder = 2,
+        }, card)
+        mk("TextLabel", {
+            Name = "Desc",
+            Size = UDim2.new(1, 0, 0, 0),
+            AutomaticSize = Enum.AutomaticSize.Y,
+            BackgroundTransparency = 1,
+            Text = (DISCORD_TEXT ~= "") and DISCORD_TEXT or S.text,
+            TextColor3 = C.TextDim,
+            Font = C.Font,
+            TextSize = 13,
+            TextWrapped = true,
+            LayoutOrder = 3,
+        }, card)
+
+        --// Caja con el link (para ver qué se va a copiar)
+        local linkBox = mk("Frame", {
+            Name = "LinkBox",
+            Size = UDim2.new(1, 0, 0, 32),
+            BackgroundColor3 = C.Secondary,
+            BorderSizePixel = 0,
+            LayoutOrder = 4,
+        }, card)
+        corner(linkBox, 8)
+        stroke(linkBox, C.Edge, 1)
+        mk("TextLabel", {
+            Name = "LinkText",
+            Size = UDim2.new(1, -16, 1, 0),
+            Position = UDim2.new(0, 8, 0, 0),
+            BackgroundTransparency = 1,
+            Text = DISCORD_LINK,
+            TextColor3 = C.TextDim,
+            Font = C.Font,
+            TextSize = 12,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+        }, linkBox)
+
+        --// Botones
+        local row = mk("Frame", {
+            Name = "Buttons",
+            Size = UDim2.new(1, 0, 0, 40),
+            BackgroundTransparency = 1,
+            LayoutOrder = 5,
+        }, card)
+        mk("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding = UDim.new(0, 8),
+            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        }, row)
+
+        local CopyBtn = mk("TextButton", {
+            Name = "Copy",
+            Size = UDim2.new(0.5, -4, 1, 0),
+            BackgroundColor3 = C.Blurple,
+            BorderSizePixel = 0,
+            Text = S.copy,
+            TextColor3 = C.Text,
+            Font = C.Font,
+            TextSize = 14,
+            TextWrapped = true,
+            LayoutOrder = 1,
+        }, row)
+        corner(CopyBtn, 8)
+
+        local CloseBtn = mk("TextButton", {
+            Name = "Close",
+            Size = UDim2.new(0.5, -4, 1, 0),
+            BackgroundColor3 = C.Secondary,
+            BorderSizePixel = 0,
+            Text = S.close,
+            TextColor3 = C.Text,
+            Font = C.Font,
+            TextSize = 14,
+            TextWrapped = true,
+            LayoutOrder = 2,
+        }, row)
+        corner(CloseBtn, 8)
+        stroke(CloseBtn, C.Edge, 1)
+
+        --// Copiar (mismo patrón que la tarjeta de la librería: pcall + "¡Copiado!" / "No disponible")
+        CopyBtn.MouseButton1Click:Connect(function()
+            local ok = pcall(function() setclipboard(DISCORD_LINK) end)
+            CopyBtn.Text = ok and S.copied or S.unavailable
+            task.delay(2, function()
+                if CopyBtn and CopyBtn.Parent then
+                    CopyBtn.Text = S.copy
+                end
+            end)
+        end)
+
+        CloseBtn.MouseButton1Click:Connect(function()
+            gui:Destroy()
+        end)
+    end)
+    if not okPop then
+        warn("[Discord GUI] error: " .. tostring(errPop))
     end
-end
+end)
+--// [[DISCORD-POPUP-FIN]]
 end
 
 local Players = game:GetService("Players")
