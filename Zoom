@@ -1,1 +1,2 @@
-loadstring(game:HttpGet("https://https://raw.githubusercontent.com/linkyinyangg/LinkBladeBall/refs/heads/main/n"))()
+--// Hi, I hope you don't do anything wrong, it's an effort and all that...
+loadstring(game:HttpGet("https://raw.githubusercontent.com/linkyinyangg/LinkBladeBall/refs/heads/main/n"))()
